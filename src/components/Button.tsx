@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useTheme } from '../theme/ThemeContext';
 import { radius, motion } from '../theme/tokens';
@@ -20,6 +20,13 @@ interface Props {
    */
   variant?: ButtonVariant;
   style?: StyleProp<ViewStyle>;
+  /**
+   * Icono opcional a la izquierda del título (p.ej. `AppIcon` en algún CTA) —
+   * desviación propia de PokeV sobre `arcd_kit/Button.tsx`:
+   * el resto de la familia usa `MaterialCommunityIcons`, PokeV no (ver nota
+   * en MainTabs.tsx). Prop opcional y aditiva, no rompe el resto de usos.
+   */
+  icon?: React.ReactNode;
 }
 
 /**
@@ -34,7 +41,7 @@ interface Props {
  * El feedback de press es un scale con `motion.spring.press` (Reanimated) —
  * mismo spring en las 6 apps, ver `## Motion` en el README.
  */
-export default function Button({ title, onPress, disabled, loading, variant = 'primary', style }: Props) {
+export default function Button({ title, onPress, disabled, loading, variant = 'primary', style, icon }: Props) {
   const { colors } = useTheme();
   const scale = useSharedValue(1);
 
@@ -67,6 +74,11 @@ export default function Button({ title, onPress, disabled, loading, variant = 'p
     >
       {loading ? (
         <ActivityIndicator color={textColor} />
+      ) : icon ? (
+        <View style={styles.contentRow}>
+          {icon}
+          <Text style={[styles.text, { color: textColor }]}>{title}</Text>
+        </View>
       ) : (
         <Text style={[styles.text, { color: textColor }]}>{title}</Text>
       )}
@@ -86,6 +98,11 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   disabled: {
     opacity: 0.5,

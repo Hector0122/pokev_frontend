@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 
 interface Props {
-  icon: string;
+  /** Emoji (string, tamaño fijo 48) o un nodo propio (p.ej. `AppIcon`) cuando el emoji no encaja temáticamente. */
+  icon: string | React.ReactNode;
   title: string;
   description: string;
 }
@@ -28,7 +29,7 @@ export default function PlaceholderScreen({ icon, title, description }: Props) {
         gap: spacing.sm,
       }}
     >
-      <Text style={{ fontSize: 48 }}>{icon}</Text>
+      {typeof icon === 'string' ? <Text style={{ fontSize: 48 }}>{icon}</Text> : icon}
       {/* Sin spreadear `type.h1` (trae fontWeight, rompe la fuente custom en
           Android — ver nota junto a `label`/`caption` en theme/tokens.ts). */}
       <Text

@@ -1,15 +1,49 @@
 import React from 'react';
-import PlaceholderScreen from '../components/PlaceholderScreen';
+import { FlatList, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../theme/ThemeContext';
+import { useCards } from '../hooks/queries/useCards';
+import CardTile from '../components/CardTile';
+import EmptyState from '../components/EmptyState';
+import AppIcon from '../components/AppIcon';
+import AddCardFab from '../components/AddCardFab';
+import QueryState from '../components/QueryState';
+import type { MainTabNavigationProp } from '../navigation/types';
 
-// "Mi colección" (§5) — exclusivamente cartas que realmente poseen. La
-// grilla de cartas + el botón "➕ Agregar carta" (§6) se construyen en la
-// siguiente change de OpenSpec, conectados a la BD local (op-sqlite).
+/** "Mi colección" (§5) — exclusivamente las cartas que realmente tenemos. */
 export default function CollectionScreen() {
+  const { colors, spacing, type, fontFamily } = useTheme();
+  const navigation = useNavigation<MainTabNavigationProp<'Coleccion'>>();
+  const cardsQuery = useCards();
+
   return (
-    <PlaceholderScreen
-      icon="🃏"
-      title="Mi colección"
-      description="Acá van a aparecer las cartas que ya tenemos, como un álbum."
-    />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right']}>
+      <View style={{ padding: spacing.lg, paddingBottom: spacing.sm }}>
+        <Text style={{ ...type.display, fontFamily: fontFamily.display, color: colors.text }}>Mi colección</Text>
+      </View>
+
+      <QueryState isLoading={cardsQuery.isLoading} error={cardsQuery.error} onRetry={() => cardsQuery.refetch()}>
+        {cardsQuery.data && cardsQuery.data.length > 0 ? (
+          <FlatList
+            data={cardsQuery.data}
+            keyExtractor={(card) => card.id}
+            numColumns={3}
+            columnWrapperStyle={{ gap: spacing.sm }}
+            contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.huge }}
+            renderItem={({ item }) => (
+              <CardTile card={item} onPress={() => navigation.navigate('CardDetail', { cardId: item.id })} />
+            )}
+          />
+        ) : (
+          <EmptyState
+            icon={<AppIcon name="pikachu" size={72} />}
+            title="Todavía no tenemos cartas"
+            description="Agreguemos la primera carta de nuestro álbum."
+          />
+        )}
+      </QueryState>
+      <AddCardFab onPress={() => navigation.navigate('AddCard')} />
+    </SafeAreaView>
   );
 }

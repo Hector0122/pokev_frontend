@@ -1,8 +1,10 @@
 import { Platform } from 'react-native';
 
 /**
- * Base URL de la API (solo se usará a partir de V0.7 — nube/sincronización;
- * V0.1 es local-only, ver CLAUDE.md).
+ * Base URL de la API de `pokev_backend`. V0.1 ya la usa: el plan original de
+ * este change era local-only (op-sqlite) y se cambió en implementación a
+ * conectar directo con el backend ya desplegado en Railway — ver
+ * openspec/changes/add-v01-first-album/design.md, sección "Pivot".
  *
  * - Emulador Android: 10.0.2.2 apunta al localhost de la máquina host.
  * - Simulador iOS: localhost funciona directo.
