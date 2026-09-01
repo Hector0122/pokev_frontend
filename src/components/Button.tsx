@@ -1,8 +1,9 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useTheme } from '../theme/ThemeContext';
 import { radius, motion } from '../theme/tokens';
+import LoadingSpinner from './LoadingSpinner';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -73,7 +74,7 @@ export default function Button({ title, onPress, disabled, loading, variant = 'p
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={textColor} />
+        <LoadingSpinner size={24} />
       ) : icon ? (
         <View style={styles.contentRow}>
           {icon}

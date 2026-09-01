@@ -1,7 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import Button from './Button';
+import LoadingSpinner from './LoadingSpinner';
 
 interface Props {
   isLoading: boolean;
@@ -21,7 +22,7 @@ export default function QueryState({ isLoading, error, onRetry, children }: Prop
   if (isLoading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <LoadingSpinner size={56} />
       </View>
     );
   }

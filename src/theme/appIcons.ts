@@ -15,6 +15,7 @@ export const APP_ICONS = {
   gotcha: require('../../assets/icons/gotcha.png'),
   psyduck: require('../../assets/icons/psyduck.png'),
   entrenador: require('../../assets/icons/entrenador.png'),
+  cargando: require('../../assets/icons/cargando.png'),
 } as const;
 
 export type AppIconName = keyof typeof APP_ICONS;

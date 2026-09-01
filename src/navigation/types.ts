@@ -18,7 +18,19 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList>;
   CardDetail: { cardId: string };
   PokemonDetail: { pokemonId: number };
-  AddCard: undefined;
+  /**
+   * Params opcionales: llegar desde el Buscador (§7, "agregar esta carta")
+   * precarga el paso de datos con lo que ya sabemos del catálogo TCGdex, en
+   * vez de que el usuario lo tipee de nuevo.
+   */
+  AddCard:
+    | {
+        prefillPokemonName?: string;
+        prefillSetName?: string;
+        prefillCardNumber?: string;
+        prefillImageUrl?: string;
+      }
+    | undefined;
   EditCard: { cardId: string };
 };
 

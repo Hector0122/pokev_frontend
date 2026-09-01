@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { FlatList, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../theme/ThemeContext';
 import { useTrainers } from '../hooks/queries/useTrainers';
@@ -10,6 +10,7 @@ import { useCreateCard } from '../hooks/queries/useCards';
 import { runWithAchievementUnlockDetection } from '../hooks/queries/useAchievements';
 import Button from '../components/Button';
 import AppIcon from '../components/AppIcon';
+import LoadingSpinner from '../components/LoadingSpinner';
 import TextField from '../components/TextField';
 import CardFieldsForm, { EMPTY_CARD_FORM_VALUES, type CardFormValues } from '../components/CardFieldsForm';
 import CelebrationModal from '../components/CelebrationModal';
@@ -23,7 +24,7 @@ import {
 import type { RootStackParamList } from '../navigation/types';
 import type { AchievementStatus, CreateCardInput } from '../api/types';
 
-type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'AddCard'> };
+type Props = NativeStackScreenProps<RootStackParamList, 'AddCard'>;
 
 interface SelectedPokemon {
   id: number;
@@ -39,7 +40,7 @@ interface Celebration {
 }
 
 /** Flujo de "Agregar carta" (§6): elegir Pokémon → completar datos → cantidad → favorita → guardar. */
-export default function AddCardScreen({ navigation }: Props) {
+export default function AddCardScreen({ navigation, route }: Props) {
   const { colors, spacing, type } = useTheme();
   const queryClient = useQueryClient();
   const trainersQuery = useTrainers();
@@ -47,17 +48,33 @@ export default function AddCardScreen({ navigation }: Props) {
   const enrichPokemon = useEnrichPokemon();
   const createCard = useCreateCard();
 
+  const prefill = route.params;
+
   const [selected, setSelected] = useState<SelectedPokemon | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(prefill?.prefillPokemonName ?? '');
   const [searchResults, setSearchResults] = useState<PokemonSpeciesListItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  const [values, setValues] = useState<CardFormValues>(EMPTY_CARD_FORM_VALUES);
+  const [values, setValues] = useState<CardFormValues>(() => ({
+    ...EMPTY_CARD_FORM_VALUES,
+    setName: prefill?.prefillSetName ?? EMPTY_CARD_FORM_VALUES.setName,
+    cardNumber: prefill?.prefillCardNumber ?? EMPTY_CARD_FORM_VALUES.cardNumber,
+    imageUrl: prefill?.prefillImageUrl ?? EMPTY_CARD_FORM_VALUES.imageUrl,
+  }));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [celebrations, setCelebrations] = useState<Celebration[]>([]);
+
+  // Viniendo del Buscador (§7) ya sabemos el nombre — disparamos la búsqueda
+  // de una vez para que solo falte tocar el resultado correcto, no re-tipearlo.
+  useEffect(() => {
+    if (prefill?.prefillPokemonName) {
+      handleSearch(prefill.prefillPokemonName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function updateValues(patch: Partial<CardFormValues>) {
     setValues((prev) => ({ ...prev, ...patch }));
@@ -205,7 +222,7 @@ export default function AddCardScreen({ navigation }: Props) {
             placeholder="Ej. Pikachu"
             autoFocus
           />
-          {isSearching ? <ActivityIndicator color={colors.primary} /> : null}
+          {isSearching ? <LoadingSpinner size={32} /> : null}
           {searchError ? <Text style={{ ...type.bodySm, color: colors.danger }}>{searchError}</Text> : null}
           <FlatList
             data={searchResults}

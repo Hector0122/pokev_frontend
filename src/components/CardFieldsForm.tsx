@@ -118,9 +118,17 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
   );
 }
 
-/** Campos de una carta (§8), compartidos entre Agregar y Editar (§6). */
+/**
+ * Campos de una carta (§8), compartidos entre Agregar y Editar (§6). El
+ * flujo del spec es corto (Pokémon → carta → cantidad → favorita opcional →
+ * guardar) — rareza/tipo/HP/ataques/año/idioma/variante/valor/"conseguida
+ * con" son metadata de coleccionista que se fue agregando encima y hacía
+ * sentir el formulario "muy complicado" para agregar rápido; quedan atrás
+ * de "+ más detalles" en vez de siempre visibles.
+ */
 export default function CardFieldsForm({ values, onChange, trainers, showFavorites }: Props) {
   const { colors, spacing, radius, type } = useTheme();
+  const [showDetails, setShowDetails] = React.useState(false);
 
   function updateAttack(index: number, patch: Partial<CardAttack>) {
     const next = [...values.attacks];
@@ -158,125 +166,138 @@ export default function CardFieldsForm({ values, onChange, trainers, showFavorit
           onChangeText={(cardNumber) => onChange({ cardNumber })}
           placeholder="Ej. 025"
         />
-        <TextField label="Rareza" value={values.rarity} onChangeText={(rarity) => onChange({ rarity })} />
-        <TextField
-          label="Tipo de carta"
-          value={values.cardType}
-          onChangeText={(cardType) => onChange({ cardType })}
-          placeholder="Ej. ex, V, Illustration Rare"
-        />
-        <TextField label="HP" value={values.hp} onChangeText={(hp) => onChange({ hp })} keyboardType="number-pad" />
-        <TextField label="Año" value={values.year} onChangeText={(year) => onChange({ year })} keyboardType="number-pad" />
-        <TextField label="Idioma" value={values.language} onChangeText={(language) => onChange({ language })} />
-        <TextField label="Variante" value={values.variant} onChangeText={(variant) => onChange({ variant })} />
-        <TextField
-          label="Imagen de la carta (URL, opcional)"
-          value={values.imageUrl}
-          onChangeText={(imageUrl) => onChange({ imageUrl })}
-          autoCapitalize="none"
-          placeholder="Si la dejás vacía, usamos la imagen del Pokémon"
-        />
-      </Section>
-
-      <Section title="Ataques">
-        {values.attacks.map((attack, index) => (
-          <View
-            key={index}
-            style={{
-              flexDirection: 'row',
-              gap: spacing.xs,
-              alignItems: 'center',
-              backgroundColor: colors.surfaceAlt,
-              borderRadius: radius.sm,
-              padding: spacing.sm,
-            }}
-          >
-            <View style={{ flex: 1, gap: spacing.xxs }}>
-              <TextField
-                label="Nombre"
-                value={attack.name}
-                onChangeText={(name) => updateAttack(index, { name })}
-              />
-              <TextField
-                label="Daño"
-                value={attack.damage ?? ''}
-                onChangeText={(damage) => updateAttack(index, { damage })}
-                keyboardType="numbers-and-punctuation"
-              />
-            </View>
-            <Pressable onPress={() => removeAttack(index)} style={{ padding: spacing.xs }}>
-              <Text style={{ fontSize: 20 }}>🗑️</Text>
-            </Pressable>
-          </View>
-        ))}
-        <Pressable
-          onPress={() => onChange({ attacks: [...values.attacks, { name: '', damage: '' }] })}
-          style={{ alignSelf: 'flex-start' }}
-        >
-          <Text style={{ ...type.bodySm, color: colors.primary, fontWeight: '600' }}>+ Agregar ataque</Text>
-        </Pressable>
       </Section>
 
       <Section title="Cantidad">
         <Stepper value={values.quantity} onChange={(quantity) => onChange({ quantity })} />
       </Section>
 
-      <Section title="Información de colección">
-        <TextField
-          label="Valor aproximado (USD, opcional)"
-          value={values.estimatedValueUsd}
-          onChangeText={(estimatedValueUsd) => onChange({ estimatedValueUsd })}
-          keyboardType="decimal-pad"
-        />
-        <Text style={{ ...type.caption, color: colors.textMuted }}>
-          Los precios son aproximados y pueden cambiar — es solo una referencia para papá.
-        </Text>
-
+      {showFavorites ? (
         <View style={{ gap: spacing.xxs }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xxs }}>
-            <AppIcon name="entrenador" size={16} />
-            <Text style={{ ...type.label, color: colors.textSecondary }}>CONSEGUIDA CON</Text>
-          </View>
+          <Text style={{ ...type.label, color: colors.textSecondary }}>MARCAR COMO FAVORITA DE</Text>
           <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
             {trainers.map((trainer) => (
               <Chip
                 key={trainer.id}
-                label={trainer.name}
-                selected={values.acquiredWithId === trainer.id}
-                onPress={() =>
-                  onChange({ acquiredWithId: values.acquiredWithId === trainer.id ? null : trainer.id })
-                }
+                label={`${trainer.name} ❤️`}
+                selected={values.favoriteTrainerRoles.includes(trainer.role)}
+                onPress={() => toggleFavoriteRole(trainer.role)}
               />
             ))}
           </View>
         </View>
+      ) : null}
 
-        {showFavorites ? (
-          <View style={{ gap: spacing.xxs }}>
-            <Text style={{ ...type.label, color: colors.textSecondary }}>MARCAR COMO FAVORITA DE</Text>
-            <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
-              {trainers.map((trainer) => (
-                <Chip
-                  key={trainer.id}
-                  label={`${trainer.name} ❤️`}
-                  selected={values.favoriteTrainerRoles.includes(trainer.role)}
-                  onPress={() => toggleFavoriteRole(trainer.role)}
-                />
-              ))}
+      <TextField
+        label="Recuerdo (opcional)"
+        value={values.memory}
+        onChangeText={(memory) => onChange({ memory })}
+        placeholder="Ej. Fue la primera carta que encontramos juntos"
+        multiline
+        numberOfLines={3}
+        style={{ minHeight: 80, textAlignVertical: 'top' }}
+      />
+
+      <Pressable onPress={() => setShowDetails((v) => !v)} style={{ alignSelf: 'flex-start' }}>
+        <Text style={{ ...type.bodySm, color: colors.primary, fontWeight: '600' }}>
+          {showDetails ? '– Ocultar detalles' : '+ Más detalles (opcional)'}
+        </Text>
+      </Pressable>
+
+      {showDetails ? (
+        <>
+          <Section title="Detalles de la carta">
+            <TextField label="Rareza" value={values.rarity} onChangeText={(rarity) => onChange({ rarity })} />
+            <TextField
+              label="Tipo de carta"
+              value={values.cardType}
+              onChangeText={(cardType) => onChange({ cardType })}
+              placeholder="Ej. ex, V, Illustration Rare"
+            />
+            <TextField label="HP" value={values.hp} onChangeText={(hp) => onChange({ hp })} keyboardType="number-pad" />
+            <TextField label="Año" value={values.year} onChangeText={(year) => onChange({ year })} keyboardType="number-pad" />
+            <TextField label="Idioma" value={values.language} onChangeText={(language) => onChange({ language })} />
+            <TextField label="Variante" value={values.variant} onChangeText={(variant) => onChange({ variant })} />
+            <TextField
+              label="Imagen de la carta (URL, opcional)"
+              value={values.imageUrl}
+              onChangeText={(imageUrl) => onChange({ imageUrl })}
+              autoCapitalize="none"
+              placeholder="Si la dejás vacía, usamos la imagen del Pokémon"
+            />
+          </Section>
+
+          <Section title="Ataques">
+            {values.attacks.map((attack, index) => (
+              <View
+                key={index}
+                style={{
+                  flexDirection: 'row',
+                  gap: spacing.xs,
+                  alignItems: 'center',
+                  backgroundColor: colors.surfaceAlt,
+                  borderRadius: radius.sm,
+                  padding: spacing.sm,
+                }}
+              >
+                <View style={{ flex: 1, gap: spacing.xxs }}>
+                  <TextField
+                    label="Nombre"
+                    value={attack.name}
+                    onChangeText={(name) => updateAttack(index, { name })}
+                  />
+                  <TextField
+                    label="Daño"
+                    value={attack.damage ?? ''}
+                    onChangeText={(damage) => updateAttack(index, { damage })}
+                    keyboardType="numbers-and-punctuation"
+                  />
+                </View>
+                <Pressable onPress={() => removeAttack(index)} style={{ padding: spacing.xs }}>
+                  <Text style={{ fontSize: 20 }}>🗑️</Text>
+                </Pressable>
+              </View>
+            ))}
+            <Pressable
+              onPress={() => onChange({ attacks: [...values.attacks, { name: '', damage: '' }] })}
+              style={{ alignSelf: 'flex-start' }}
+            >
+              <Text style={{ ...type.bodySm, color: colors.primary, fontWeight: '600' }}>+ Agregar ataque</Text>
+            </Pressable>
+          </Section>
+
+          <Section title="Más información">
+            <TextField
+              label="Valor aproximado (USD, opcional)"
+              value={values.estimatedValueUsd}
+              onChangeText={(estimatedValueUsd) => onChange({ estimatedValueUsd })}
+              keyboardType="decimal-pad"
+            />
+            <Text style={{ ...type.caption, color: colors.textMuted }}>
+              Los precios son aproximados y pueden cambiar — es solo una referencia para papá.
+            </Text>
+
+            <View style={{ gap: spacing.xxs }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xxs }}>
+                <AppIcon name="entrenador" size={16} />
+                <Text style={{ ...type.label, color: colors.textSecondary }}>CONSEGUIDA CON</Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
+                {trainers.map((trainer) => (
+                  <Chip
+                    key={trainer.id}
+                    label={trainer.name}
+                    selected={values.acquiredWithId === trainer.id}
+                    onPress={() =>
+                      onChange({ acquiredWithId: values.acquiredWithId === trainer.id ? null : trainer.id })
+                    }
+                  />
+                ))}
+              </View>
             </View>
-          </View>
-        ) : null}
-
-        <TextField
-          label="Recuerdo (opcional)"
-          value={values.memory}
-          onChangeText={(memory) => onChange({ memory })}
-          placeholder="Ej. Fue la primera carta que encontramos juntos"
-          multiline
-          numberOfLines={3}
-          style={{ minHeight: 80, textAlignVertical: 'top' }}
-        />
-      </Section>
+          </Section>
+        </>
+      ) : null}
     </View>
   );
 }
