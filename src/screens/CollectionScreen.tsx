@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
@@ -19,8 +19,19 @@ export default function CollectionScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right']}>
-      <View style={{ padding: spacing.lg, paddingBottom: spacing.sm }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: spacing.lg,
+          paddingBottom: spacing.sm,
+        }}
+      >
         <Text style={{ ...type.display, fontFamily: fontFamily.display, color: colors.text }}>Mi colección</Text>
+        <Pressable onPress={() => navigation.navigate('Special')} hitSlop={12}>
+          <AppIcon name="corazon" size={32} />
+        </Pressable>
       </View>
 
       <QueryState isLoading={cardsQuery.isLoading} error={cardsQuery.error} onRetry={() => cardsQuery.refetch()}>
@@ -43,7 +54,7 @@ export default function CollectionScreen() {
           />
         )}
       </QueryState>
-      <AddCardFab onPress={() => navigation.navigate('AddCard')} />
+      <AddCardFab />
     </SafeAreaView>
   );
 }

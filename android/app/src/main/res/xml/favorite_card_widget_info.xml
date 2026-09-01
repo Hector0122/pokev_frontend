@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget de cartas favoritas — ver src/services/favoritesWidget.ts. Sin
+  updatePeriodMillis (0 = desactivado): el widget se actualiza cuando la app
+  lo empuja (requestWidgetUpdate), no por polling periódico del sistema
+  (decisión: mostrar la última foto que la app cargó, no pegarle a Railway
+  desde el proceso del widget).
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="180dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/rn_widget"
+    android:previewImage="@drawable/favorite_card_widget_preview"
+    android:description="@string/favorite_card_widget_description"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen">
+</appwidget-provider>

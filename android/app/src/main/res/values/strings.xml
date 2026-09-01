@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">PokeV</string>
+    <string name="favorite_card_widget_description" translatable="false">Una carta favorita en la pantalla de inicio.</string>
 </resources>

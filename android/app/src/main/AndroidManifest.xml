@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Sin permiso CAMERA a propósito: react-native-image-picker delega en
+         la app de cámara del sistema (intent implícito) para el escaneo de
+         cartas — si declarásemos el permiso acá, la librería exige pedirlo
+         en runtime nosotros mismos; sin declararlo, "no permissions
+         required" según su propia doc. -->
+
 
     <application
       android:name=".MainApplication"
@@ -23,5 +29,19 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+
+      <!-- Widget de cartas favoritas — ver src/services/favoritesWidget.ts. -->
+      <receiver
+        android:name=".widget.FavoriteCard"
+        android:exported="false"
+        android:label="Carta favorita">
+        <intent-filter>
+            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            <action android:name="com.pokev.WIDGET_CLICK" />
+        </intent-filter>
+        <meta-data
+            android:name="android.appwidget.provider"
+            android:resource="@xml/favorite_card_widget_info" />
+      </receiver>
     </application>
 </manifest>

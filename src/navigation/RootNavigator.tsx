@@ -6,6 +6,7 @@ import CardDetailScreen from '../screens/CardDetailScreen';
 import PokemonDetailScreen from '../screens/PokemonDetailScreen';
 import AddCardScreen from '../screens/AddCardScreen';
 import EditCardScreen from '../screens/EditCardScreen';
+import FavoritesScreen from '../screens/FavoritesScreen';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -24,6 +25,7 @@ export default function RootNavigator() {
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="CardDetail" component={CardDetailScreen} />
         <Stack.Screen name="PokemonDetail" component={PokemonDetailScreen} />
+        <Stack.Screen name="Special" component={FavoritesScreen} />
         <Stack.Screen name="AddCard" component={AddCardScreen} options={{ presentation: 'modal' }} />
         <Stack.Screen name="EditCard" component={EditCardScreen} options={{ presentation: 'modal' }} />
       </Stack.Navigator>

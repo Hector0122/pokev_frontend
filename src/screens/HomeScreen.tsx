@@ -1,12 +1,10 @@
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { useCardStats } from '../hooks/queries/useCards';
 import AppIcon from '../components/AppIcon';
 import AddCardFab from '../components/AddCardFab';
-import type { MainTabNavigationProp } from '../navigation/types';
 
 /**
  * Pantalla principal (§4) — "centro de bienvenida", no un dashboard: antes
@@ -17,7 +15,6 @@ import type { MainTabNavigationProp } from '../navigation/types';
  */
 export default function HomeScreen() {
   const { colors, spacing, radius, type, fontFamily } = useTheme();
-  const navigation = useNavigation<MainTabNavigationProp<'Inicio'>>();
   const statsQuery = useCardStats();
   const stats = statsQuery.data;
 
@@ -93,7 +90,7 @@ export default function HomeScreen() {
           </View>
         ) : null}
       </ScrollView>
-      <AddCardFab onPress={() => navigation.navigate('AddCard')} />
+      <AddCardFab />
     </SafeAreaView>
   );
 }

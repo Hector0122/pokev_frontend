@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { FlatList, Image, Platform, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,9 +13,9 @@ import AppIcon from '../components/AppIcon';
 import LoadingSpinner from '../components/LoadingSpinner';
 import TextField from '../components/TextField';
 import CardFieldsForm, { EMPTY_CARD_FORM_VALUES, type CardFormValues } from '../components/CardFieldsForm';
-import CelebrationModal from '../components/CelebrationModal';
 import {
   fetchPokemonDetails,
+  normalizeForSearch,
   officialArtworkUrl,
   searchPokemonSpecies,
   type PokemonDetails,
@@ -31,12 +31,6 @@ interface SelectedPokemon {
   name: string;
   details: PokemonDetails | null;
   detailsFailed: boolean;
-}
-
-interface Celebration {
-  icon: string | React.ReactNode;
-  title: string;
-  subtitle?: string;
 }
 
 /** Flujo de "Agregar carta" (§6): elegir Pokémon → completar datos → cantidad → favorita → guardar. */
@@ -65,14 +59,26 @@ export default function AddCardScreen({ navigation, route }: Props) {
   }));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [celebrations, setCelebrations] = useState<Celebration[]>([]);
 
-  // Viniendo del Buscador (§7) ya sabemos el nombre — disparamos la búsqueda
-  // de una vez para que solo falte tocar el resultado correcto, no re-tipearlo.
+  // Viniendo del Buscador o de escanear una foto (pokébola en Home/Colección,
+  // ver AddCardFab) ya sabemos el nombre. Si matchea exacto con una especie
+  // real, la elegimos sola — "un niño nunca va a agregar cartas escribiendo
+  // en el formulario": la búsqueda manual es el respaldo, no el paso 1.
   useEffect(() => {
-    if (prefill?.prefillPokemonName) {
-      handleSearch(prefill.prefillPokemonName);
-    }
+    const name = prefill?.prefillPokemonName;
+    if (!name) return;
+    setSearchTerm(name);
+    setIsSearching(true);
+    setSearchError(null);
+    searchPokemonSpecies(name)
+      .then((results) => {
+        setSearchResults(results);
+        const normalized = normalizeForSearch(name);
+        const exact = results.find((r) => normalizeForSearch(r.name) === normalized);
+        if (exact) handlePickPokemon(exact);
+      })
+      .catch(() => setSearchError('No pudimos buscar Pokémon. Revisá tu conexión.'))
+      .finally(() => setIsSearching(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -170,34 +176,23 @@ export default function AddCardScreen({ navigation, route }: Props) {
         createCard.mutateAsync(input),
       );
 
-      const queue: Celebration[] = [];
-      if (!wasAlreadyDiscovered) {
-        queue.push({
-          icon: <AppIcon name="gotcha" size={64} />,
-          title: '¡Nuevo Pokémon descubierto!',
-          subtitle: `¡Agregaron su primera carta de ${selected.name}!`,
-        });
+      // Toast en vez de un modal a tocar (pedido explícito: "no quiero tener
+      // que dar tantos clics al momento de guardar") — un solo mensaje, el
+      // más relevante, y directo a Home sin esperar ningún tap.
+      const message = !wasAlreadyDiscovered
+        ? `¡Nuevo Pokémon descubierto! Agregaron su primera carta de ${selected.name}.`
+        : (newlyUnlocked[0] as AchievementStatus | undefined)?.title
+          ? `¡Logro desbloqueado! ${(newlyUnlocked[0] as AchievementStatus).title}`
+          : '¡Carta agregada!';
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(message, ToastAndroid.LONG);
       }
-      queue.push(...newlyUnlocked.map((a: AchievementStatus) => ({ icon: a.icon ?? '🏆', title: a.title })));
-
-      if (queue.length > 0) {
-        setCelebrations(queue);
-      } else {
-        navigation.goBack();
-      }
+      navigation.navigate('Main', { screen: 'Inicio' });
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Algo salió mal. Probá de nuevo.');
     } finally {
       setSaving(false);
     }
-  }
-
-  function dismissCelebration() {
-    setCelebrations((prev) => {
-      const next = prev.slice(1);
-      if (next.length === 0) navigation.goBack();
-      return next;
-    });
   }
 
   const canSave = !!selected && values.setName.trim().length > 0 && values.cardNumber.trim().length > 0;
@@ -291,14 +286,6 @@ export default function AddCardScreen({ navigation, route }: Props) {
           />
         </ScrollView>
       )}
-
-      <CelebrationModal
-        visible={celebrations.length > 0}
-        icon={celebrations[0]?.icon ?? '🎉'}
-        title={celebrations[0]?.title ?? ''}
-        subtitle={celebrations[0]?.subtitle}
-        onDismiss={dismissCelebration}
-      />
     </SafeAreaView>
   );
 }

@@ -12,11 +12,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import RootNavigator from './src/navigation/RootNavigator';
+import { useSyncFavoritesWidget } from './src/hooks/useSyncFavoritesWidget';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
   const { colors } = useTheme();
+  useSyncFavoritesWidget();
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />

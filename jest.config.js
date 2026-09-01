@@ -12,6 +12,8 @@ const modulesToTransform = [
   'react-native-worklets',
   'react-native-vector-icons',
   '@react-native-async-storage',
+  'react-native-image-picker',
+  'react-native-android-widget',
 ].join('|');
 
 module.exports = {

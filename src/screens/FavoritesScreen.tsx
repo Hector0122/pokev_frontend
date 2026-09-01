@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { useCards } from '../hooks/queries/useCards';
 import { useTrainers } from '../hooks/queries/useTrainers';
@@ -37,13 +36,14 @@ function Section({ title, cards, onPressCard }: { title: string; cards: Card[]; 
   );
 }
 
+type Props = NativeStackScreenProps<RootStackParamList, 'Special'>;
+
 /**
- * Favoritas (§11) y Cartas especiales (§12) — ya no es una tab (ver nota en
- * navigation/types.ts), se queda sin usar por ahora.
+ * Favoritas (§11) y Cartas especiales (§12) — ya no es una tab, se llega
+ * desde un botón en el header de Colección (ver navigation/types.ts).
  */
-export default function FavoritesScreen() {
+export default function FavoritesScreen({ navigation }: Props) {
   const { colors, spacing, type, fontFamily } = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const cardsQuery = useCards();
   const trainersQuery = useTrainers();
 
@@ -87,7 +87,12 @@ export default function FavoritesScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right']}>
-      <View style={{ padding: spacing.lg, paddingBottom: spacing.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md }}>
+        <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
+          <Text style={{ fontSize: 24, color: colors.text }}>←</Text>
+        </Pressable>
+      </View>
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
         <Text style={{ ...type.display, fontFamily: fontFamily.display, color: colors.text }}>Favoritas</Text>
       </View>
 
