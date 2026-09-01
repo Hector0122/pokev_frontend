@@ -37,7 +37,7 @@ export default function CollectionScreen() {
           />
         ) : (
           <EmptyState
-            icon={<AppIcon name="pikachu" size={72} />}
+            icon={<AppIcon name="bulbasour" size={72} />}
             title="Todavía no tenemos cartas"
             description="Agreguemos la primera carta de nuestro álbum."
           />

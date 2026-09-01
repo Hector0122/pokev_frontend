@@ -1,21 +1,17 @@
-import { Platform } from 'react-native';
-
 /**
  * Base URL de la API de `pokev_backend`. V0.1 ya la usa: el plan original de
  * este change era local-only (op-sqlite) y se cambió en implementación a
  * conectar directo con el backend ya desplegado en Railway — ver
- * openspec/changes/add-v01-first-album/design.md, sección "Pivot".
+ * openspec/changes/archive/2026-09-01-add-v01-first-album/design.md, sección "Pivot".
  *
- * - Emulador Android: 10.0.2.2 apunta al localhost de la máquina host.
- * - Simulador iOS: localhost funciona directo.
- * - Dispositivo físico: reemplazá por la IP LAN de tu máquina (ej. 192.168.x.x)
- *   o por la URL pública del backend en Railway.
+ * Siempre apunta a Railway, incluso en dev: no hay un backend local corriendo
+ * como parte del flujo normal de trabajo (el `.env` de este repo ya apunta ahí
+ * también), y el celular físico usado para probar no puede resolver la IP
+ * especial del emulador (`10.0.2.2`) que se usaba antes acá — encontrado en
+ * add-v03-buscador-and-simplify-ux al verificar en dispositivo real.
+ *
+ * Si en algún momento SÍ corrés `pokev_backend` local para probar cambios de
+ * backend sin tocar producción, reemplazá esto por la IP LAN de tu máquina
+ * (ej. `http://192.168.x.x:3000`) mientras la uses, y devolvelo después.
  */
-const DEV_API_URL = Platform.select({
-  android: 'http://10.0.2.2:3000',
-  default: 'http://localhost:3000',
-});
-
-const PROD_API_URL = 'https://pokevbackend-production.up.railway.app';
-
-export const API_BASE_URL = __DEV__ ? DEV_API_URL : PROD_API_URL;
+export const API_BASE_URL = 'https://pokevbackend-production.up.railway.app';

@@ -179,7 +179,16 @@ export default function SearchScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.huge }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: groups.length === 0 ? 'center' : 'flex-start',
+            padding: spacing.lg,
+            gap: spacing.lg,
+            paddingBottom: spacing.huge,
+          }}
+        >
           {groups.map((group) => (
             <View key={group.setId} style={{ gap: spacing.sm }}>
               <Text style={{ ...type.h2, color: colors.text }}>{group.setName}</Text>
@@ -251,8 +260,8 @@ export default function SearchScreen() {
           ))}
 
           {query.trim().length < 2 ? (
-            <View style={{ alignItems: 'center', gap: spacing.sm, paddingTop: spacing.xxl }}>
-              <AppIcon name="pikachu" size={96} />
+            <View style={{ alignItems: 'center', gap: spacing.sm }}>
+              <AppIcon name="ditto" size={96} />
               <Text style={{ ...type.body, color: colors.textSecondary, textAlign: 'center' }}>
                 Escribí el nombre de un Pokémon para ver todas sus cartas.
               </Text>
