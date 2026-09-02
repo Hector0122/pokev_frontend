@@ -1,6 +1,6 @@
 # PokeV 🃏
 
-App móvil personal para llevar el álbum de cartas Pokémon de mi hijo de 6 años y mío — un álbum digital que celebra lo que ya tenemos, nunca lo que falta.
+App móvil personal para llevar el álbum de cartas Pokémon de mi hijo y mío — un álbum digital que celebra lo que ya tenemos.
 
 <table align="center">
   <tr>
@@ -21,7 +21,7 @@ App móvil personal para llevar el álbum de cartas Pokémon de mi hijo de 6 añ
 
 ## Por qué existe
 
-La mayoría de apps de colección están pensadas para coleccionistas adultos que buscan "completar" algo — porcentajes, listas de lo que falta, la Pokédex nacional entera. Para un niño de 6 años eso se siente como una meta imposible. PokeV hace lo contrario: la Pokédex solo muestra los Pokémon que ya descubrieron por tener una carta propia, y el progreso se celebra en hitos ("¡Ya tenemos 100 cartas!"), nunca en lo que falta.
+La mayoría de apps de colección están pensadas para coleccionistas adultos que buscan "completar" algo — porcentajes, listas de lo que falta, la Pokédex nacional entera. Para un niño eso se siente como una meta imposible. PokeV hace lo contrario: la Pokédex solo muestra los Pokémon que ya descubrieron por tener una carta propia, y el progreso se celebra en hitos ("¡Ya tenemos 100 cartas!"), nunca en lo que falta.
 
 ## Features
 
