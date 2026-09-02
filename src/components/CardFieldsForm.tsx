@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import TextField from './TextField';
 import AppIcon from './AppIcon';
@@ -65,33 +65,19 @@ function Stepper({ value, onChange }: { value: string; onChange: (v: string) => 
   const { colors, spacing, radius, type, fontFamily } = useTheme();
   const numeric = Math.max(1, Number(value) || 1);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+    <View style={[styles.rowCenter, { gap: spacing.md }]}>
       <Pressable
         onPress={() => onChange(String(Math.max(1, numeric - 1)))}
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: radius.sm,
-          backgroundColor: colors.surfaceAlt,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+        style={[styles.stepperButton, { borderRadius: radius.sm, backgroundColor: colors.surfaceAlt }]}
       >
         <Text style={{ ...type.h1, color: colors.text }}>–</Text>
       </Pressable>
-      <Text style={{ fontSize: type.h1.fontSize, fontFamily: fontFamily.mono, color: colors.text, minWidth: 32, textAlign: 'center' }}>
+      <Text style={[styles.stepperValue, { fontSize: type.h1.fontSize, fontFamily: fontFamily.mono, color: colors.text }]}>
         {numeric}
       </Text>
       <Pressable
         onPress={() => onChange(String(numeric + 1))}
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: radius.sm,
-          backgroundColor: colors.primarySoft,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+        style={[styles.stepperButton, { borderRadius: radius.sm, backgroundColor: colors.primarySoft }]}
       >
         <Text style={{ ...type.h1, color: colors.primary }}>+</Text>
       </Pressable>
@@ -104,16 +90,20 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
   return (
     <Pressable
       onPress={onPress}
-      style={{
-        paddingVertical: spacing.xs,
-        paddingHorizontal: spacing.md,
-        borderRadius: radius.pill,
-        backgroundColor: selected ? colors.primary : colors.surfaceAlt,
-        borderWidth: 1,
-        borderColor: selected ? colors.primary : colors.border,
-      }}
+      style={[
+        styles.chip,
+        {
+          paddingVertical: spacing.xs,
+          paddingHorizontal: spacing.md,
+          borderRadius: radius.pill,
+          backgroundColor: selected ? colors.primary : colors.surfaceAlt,
+          borderColor: selected ? colors.primary : colors.border,
+        },
+      ]}
     >
-      <Text style={{ ...type.bodySm, color: selected ? '#FFFFFF' : colors.text, fontWeight: '600' }}>{label}</Text>
+      <Text style={[styles.bold, selected ? styles.chipTextSelected : { color: colors.text }, { ...type.bodySm }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -175,7 +165,7 @@ export default function CardFieldsForm({ values, onChange, trainers, showFavorit
       {showFavorites ? (
         <View style={{ gap: spacing.xxs }}>
           <Text style={{ ...type.label, color: colors.textSecondary }}>MARCAR COMO FAVORITA DE</Text>
-          <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
+          <View style={[styles.wrapRow, { gap: spacing.xs }]}>
             {trainers.map((trainer) => (
               <Chip
                 key={trainer.id}
@@ -195,11 +185,11 @@ export default function CardFieldsForm({ values, onChange, trainers, showFavorit
         placeholder="Ej. Fue la primera carta que encontramos juntos"
         multiline
         numberOfLines={3}
-        style={{ minHeight: 80, textAlignVertical: 'top' }}
+        style={styles.memoryField}
       />
 
-      <Pressable onPress={() => setShowDetails((v) => !v)} style={{ alignSelf: 'flex-start' }}>
-        <Text style={{ ...type.bodySm, color: colors.primary, fontWeight: '600' }}>
+      <Pressable onPress={() => setShowDetails((v) => !v)} style={styles.flexStart}>
+        <Text style={[styles.bold, { ...type.bodySm, color: colors.primary }]}>
           {showDetails ? '– Ocultar detalles' : '+ Más detalles (opcional)'}
         </Text>
       </Pressable>
@@ -231,16 +221,12 @@ export default function CardFieldsForm({ values, onChange, trainers, showFavorit
             {values.attacks.map((attack, index) => (
               <View
                 key={index}
-                style={{
-                  flexDirection: 'row',
-                  gap: spacing.xs,
-                  alignItems: 'center',
-                  backgroundColor: colors.surfaceAlt,
-                  borderRadius: radius.sm,
-                  padding: spacing.sm,
-                }}
+                style={[
+                  styles.attackRow,
+                  { gap: spacing.xs, backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, padding: spacing.sm },
+                ]}
               >
-                <View style={{ flex: 1, gap: spacing.xxs }}>
+                <View style={[styles.flex1, { gap: spacing.xxs }]}>
                   <TextField
                     label="Nombre"
                     value={attack.name}
@@ -254,15 +240,15 @@ export default function CardFieldsForm({ values, onChange, trainers, showFavorit
                   />
                 </View>
                 <Pressable onPress={() => removeAttack(index)} style={{ padding: spacing.xs }}>
-                  <Text style={{ fontSize: 20 }}>🗑️</Text>
+                  <Text style={styles.removeIcon}>🗑️</Text>
                 </Pressable>
               </View>
             ))}
             <Pressable
               onPress={() => onChange({ attacks: [...values.attacks, { name: '', damage: '' }] })}
-              style={{ alignSelf: 'flex-start' }}
+              style={styles.flexStart}
             >
-              <Text style={{ ...type.bodySm, color: colors.primary, fontWeight: '600' }}>+ Agregar ataque</Text>
+              <Text style={[styles.bold, { ...type.bodySm, color: colors.primary }]}>+ Agregar ataque</Text>
             </Pressable>
           </Section>
 
@@ -278,11 +264,11 @@ export default function CardFieldsForm({ values, onChange, trainers, showFavorit
             </Text>
 
             <View style={{ gap: spacing.xxs }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xxs }}>
+              <View style={[styles.rowCenter, { gap: spacing.xxs }]}>
                 <AppIcon name="entrenador" size={16} />
                 <Text style={{ ...type.label, color: colors.textSecondary }}>CONSEGUIDA CON</Text>
               </View>
-              <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
+              <View style={[styles.wrapRow, { gap: spacing.xs }]}>
                 {trainers.map((trainer) => (
                   <Chip
                     key={trainer.id}
@@ -301,3 +287,18 @@ export default function CardFieldsForm({ values, onChange, trainers, showFavorit
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  flexStart: { alignSelf: 'flex-start' },
+  rowCenter: { flexDirection: 'row', alignItems: 'center' },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  bold: { fontWeight: '600' },
+  stepperButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  stepperValue: { minWidth: 32, textAlign: 'center' },
+  chip: { borderWidth: 1 },
+  chipTextSelected: { color: '#FFFFFF' },
+  memoryField: { minHeight: 80, textAlignVertical: 'top' },
+  attackRow: { flexDirection: 'row', alignItems: 'center' },
+  removeIcon: { fontSize: 20 },
+});

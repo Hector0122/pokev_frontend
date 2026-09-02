@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { typeInfo } from '../services/pokemonTypes';
 import type { Card } from '../api/types';
@@ -22,43 +22,39 @@ export default function CardTile({ card, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
-      style={{
-        flex: 1,
-        backgroundColor: colors.cardBg,
-        borderRadius: radius.md,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: colors.border,
-        ...elevation.sm,
-      }}
+      style={[
+        styles.tile,
+        { backgroundColor: colors.cardBg, borderRadius: radius.md, borderColor: colors.border, ...elevation.sm },
+      ]}
     >
-      <View style={{ aspectRatio: 1, backgroundColor: info.color + '22', alignItems: 'center', justifyContent: 'center' }}>
+      <View style={[styles.artworkWrap, { backgroundColor: info.color + '22' }]}>
         {artwork ? (
-          <Image source={{ uri: artwork }} style={{ width: '80%', height: '80%' }} resizeMode="contain" />
+          <Image source={{ uri: artwork }} style={styles.artwork} resizeMode="contain" />
         ) : (
-          <Text style={{ fontSize: 40 }}>{info.icon}</Text>
+          <Text style={styles.artworkIcon}>{info.icon}</Text>
         )}
         {isFavorite ? (
-          <Text style={{ position: 'absolute', top: spacing.xxs, right: spacing.xxs, fontSize: 18 }}>❤️</Text>
+          <Text style={[styles.favoriteBadge, { top: spacing.xxs, right: spacing.xxs }]}>❤️</Text>
         ) : null}
         {card.quantity > 1 ? (
           <View
-            style={{
-              position: 'absolute',
-              bottom: spacing.xxs,
-              right: spacing.xxs,
-              backgroundColor: colors.overlay,
-              borderRadius: radius.pill,
-              paddingHorizontal: spacing.xs,
-              paddingVertical: 2,
-            }}
+            style={[
+              styles.quantityBadge,
+              {
+                bottom: spacing.xxs,
+                right: spacing.xxs,
+                backgroundColor: colors.overlay,
+                borderRadius: radius.pill,
+                paddingHorizontal: spacing.xs,
+              },
+            ]}
           >
-            <Text style={{ ...type.caption, color: '#FFFFFF' }}>x{card.quantity}</Text>
+            <Text style={[styles.whiteText, { ...type.caption }]}>x{card.quantity}</Text>
           </View>
         ) : null}
       </View>
-      <View style={{ padding: spacing.sm, gap: 2 }}>
-        <Text numberOfLines={1} style={{ ...type.bodySm, fontWeight: '600', color: colors.text }}>
+      <View style={[styles.footer, { padding: spacing.sm }]}>
+        <Text numberOfLines={1} style={[styles.bold, { ...type.bodySm, color: colors.text }]}>
           {card.pokemon.name}
         </Text>
         <Text numberOfLines={1} style={{ ...type.caption, color: colors.textSecondary, fontFamily: fontFamily.mono }}>
@@ -68,3 +64,15 @@ export default function CardTile({ card, onPress }: Props) {
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  tile: { flex: 1, overflow: 'hidden', borderWidth: 1 },
+  artworkWrap: { aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  artwork: { width: '80%', height: '80%' },
+  artworkIcon: { fontSize: 40 },
+  favoriteBadge: { position: 'absolute', fontSize: 18 },
+  quantityBadge: { position: 'absolute', paddingVertical: 2 },
+  whiteText: { color: '#FFFFFF' },
+  bold: { fontWeight: '600' },
+  footer: { gap: 2 },
+});

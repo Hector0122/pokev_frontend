@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
@@ -13,9 +13,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PokemonDetail'>;
 function InfoRow({ label, value }: { label: string; value: string }) {
   const { colors, spacing, type } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xxs }}>
+    <View style={[styles.rowBetween, { paddingVertical: spacing.xxs }]}>
       <Text style={{ ...type.bodySm, color: colors.textSecondary }}>{label}</Text>
-      <Text style={{ ...type.bodySm, color: colors.text, fontWeight: '600' }}>{value}</Text>
+      <Text style={[styles.bold, { ...type.bodySm, color: colors.text }]}>{value}</Text>
     </View>
   );
 }
@@ -27,10 +27,10 @@ export default function PokemonDetailScreen({ route, navigation }: Props) {
   const pokemonQuery = usePokemonDetail(pokemonId);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md }}>
+    <SafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
+      <View style={[styles.headerRow, { padding: spacing.md }]}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
-          <Text style={{ fontSize: 24, color: colors.text }}>←</Text>
+          <Text style={[styles.backArrow, { color: colors.text }]}>←</Text>
         </Pressable>
       </View>
 
@@ -47,23 +47,16 @@ export default function PokemonDetailScreen({ route, navigation }: Props) {
 
               return (
                 <>
-                  <View
-                    style={{
-                      backgroundColor: info.color + '22',
-                      borderRadius: radius.lg,
-                      alignItems: 'center',
-                      padding: spacing.lg,
-                    }}
-                  >
+                  <View style={[styles.centered, { backgroundColor: info.color + '22', borderRadius: radius.lg, padding: spacing.lg }]}>
                     {pokemon.spriteUrl ? (
-                      <Image source={{ uri: pokemon.spriteUrl }} style={{ width: 180, height: 180 }} resizeMode="contain" />
+                      <Image source={{ uri: pokemon.spriteUrl }} style={styles.mainImage} resizeMode="contain" />
                     ) : (
-                      <Text style={{ fontSize: 80 }}>{info.icon}</Text>
+                      <Text style={styles.mainIcon}>{info.icon}</Text>
                     )}
                   </View>
 
                   <View>
-                    <Text style={{ ...type.display, fontFamily: fontFamily.display, color: colors.text, textTransform: 'capitalize' }}>
+                    <Text style={[styles.capitalize, { ...type.display, fontFamily: fontFamily.display, color: colors.text }]}>
                       {pokemon.name}
                     </Text>
                     <Text style={{ ...type.body, color: colors.textSecondary }}>
@@ -91,23 +84,24 @@ export default function PokemonDetailScreen({ route, navigation }: Props) {
                   <View style={{ gap: spacing.sm }}>
                     <Text style={{ ...type.h2, color: colors.text }}>Evoluciones</Text>
                     {hasEvolutions ? (
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                      <View style={[styles.wrapRow, { gap: spacing.sm }]}>
                         {evolutionFamily.map((step) => (
                           <View
                             key={step.id}
-                            style={{
-                              alignItems: 'center',
-                              gap: spacing.xxs,
-                              padding: spacing.sm,
-                              backgroundColor: step.id === pokemon.id ? colors.primarySoft : colors.cardBg,
-                              borderRadius: radius.md,
-                              width: 84,
-                            }}
+                            style={[
+                              styles.evolutionTile,
+                              {
+                                gap: spacing.xxs,
+                                padding: spacing.sm,
+                                backgroundColor: step.id === pokemon.id ? colors.primarySoft : colors.cardBg,
+                                borderRadius: radius.md,
+                              },
+                            ]}
                           >
                             {step.spriteUrl ? (
-                              <Image source={{ uri: step.spriteUrl }} style={{ width: 56, height: 56 }} resizeMode="contain" />
+                              <Image source={{ uri: step.spriteUrl }} style={styles.evolutionImage} resizeMode="contain" />
                             ) : null}
-                            <Text numberOfLines={1} style={{ ...type.caption, color: colors.text, textTransform: 'capitalize' }}>
+                            <Text numberOfLines={1} style={[styles.capitalize, { ...type.caption, color: colors.text }]}>
                               {step.name}
                             </Text>
                           </View>
@@ -126,3 +120,18 @@ export default function PokemonDetailScreen({ route, navigation }: Props) {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between' },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  centered: { alignItems: 'center' },
+  bold: { fontWeight: '600' },
+  capitalize: { textTransform: 'capitalize' },
+  backArrow: { fontSize: 24 },
+  mainImage: { width: 180, height: 180 },
+  mainIcon: { fontSize: 80 },
+  evolutionTile: { alignItems: 'center', width: 84 },
+  evolutionImage: { width: 56, height: 56 },
+});

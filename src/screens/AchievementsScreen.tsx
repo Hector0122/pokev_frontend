@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useAchievements } from '../hooks/queries/useAchievements';
@@ -18,18 +18,19 @@ function AchievementBadge({ achievement }: { achievement: AchievementStatus }) {
   const { colors, spacing, radius, type } = useTheme();
   return (
     <View
-      style={{
-        width: 100,
-        alignItems: 'center',
-        gap: spacing.xxs,
-        padding: spacing.sm,
-        borderRadius: radius.md,
-        backgroundColor: achievement.unlocked ? colors.accentSoft : colors.surfaceAlt,
-        opacity: achievement.unlocked ? 1 : 0.55,
-      }}
+      style={[
+        styles.badge,
+        achievement.unlocked ? styles.unlocked : styles.locked,
+        {
+          gap: spacing.xxs,
+          padding: spacing.sm,
+          borderRadius: radius.md,
+          backgroundColor: achievement.unlocked ? colors.accentSoft : colors.surfaceAlt,
+        },
+      ]}
     >
-      <Text style={{ fontSize: 36 }}>{achievement.icon ?? '🏆'}</Text>
-      <Text numberOfLines={2} style={{ ...type.caption, color: colors.text, textAlign: 'center' }}>
+      <Text style={styles.badgeIcon}>{achievement.icon ?? '🏆'}</Text>
+      <Text numberOfLines={2} style={[styles.textCenter, { ...type.caption, color: colors.text }]}>
         {achievement.title}
       </Text>
     </View>
@@ -55,7 +56,7 @@ export default function AchievementsScreen() {
   const totalUnlocked = (achievementsQuery.data ?? []).filter((a) => a.unlocked).length;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={{ padding: spacing.lg, paddingBottom: spacing.sm }}>
         <Text style={{ ...type.display, fontFamily: fontFamily.display, color: colors.text }}>Logros</Text>
       </View>
@@ -76,7 +77,7 @@ export default function AchievementsScreen() {
                     {label.icon} {label.title}
                   </Text>
                   {unlocked.length > 0 ? (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                    <View style={[styles.wrapRow, { gap: spacing.sm }]}>
                       {unlocked.map((a) => (
                         <AchievementBadge key={a.key} achievement={a} />
                       ))}
@@ -91,7 +92,7 @@ export default function AchievementsScreen() {
                       <Text style={{ ...type.label, color: colors.textTertiary, marginTop: spacing.xs }}>
                         PRÓXIMAS METAS
                       </Text>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                      <View style={[styles.wrapRow, { gap: spacing.sm }]}>
                         {locked.map((a) => (
                           <AchievementBadge key={a.key} achievement={a} />
                         ))}
@@ -113,3 +114,13 @@ export default function AchievementsScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  textCenter: { textAlign: 'center' },
+  badge: { width: 100, alignItems: 'center' },
+  badgeIcon: { fontSize: 36 },
+  unlocked: { opacity: 1 },
+  locked: { opacity: 0.55 },
+});

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import Button from './Button';
 
@@ -22,45 +22,36 @@ export default function CelebrationModal({ visible, icon, title, subtitle, onDis
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.overlay,
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: spacing.xl,
-        }}
-      >
+      <View style={[styles.backdrop, { backgroundColor: colors.overlay, padding: spacing.xl }]}>
         <View
-          style={{
-            backgroundColor: colors.surface,
-            borderRadius: radius.xl,
-            padding: spacing.xxl,
-            alignItems: 'center',
-            gap: spacing.sm,
-            maxWidth: 360,
-            width: '100%',
-            ...elevation.lg,
-          }}
+          style={[
+            styles.card,
+            { backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xxl, gap: spacing.sm, ...elevation.lg },
+          ]}
         >
-          {typeof icon === 'string' ? <Text style={{ fontSize: 64 }}>{icon}</Text> : icon}
+          {typeof icon === 'string' ? <Text style={styles.icon}>{icon}</Text> : icon}
           <Text
-            style={{
-              fontSize: type.h1.fontSize,
-              lineHeight: type.h1.lineHeight,
-              fontFamily: fontFamily.display,
-              color: colors.text,
-              textAlign: 'center',
-            }}
+            style={[
+              styles.textCenter,
+              { fontSize: type.h1.fontSize, lineHeight: type.h1.lineHeight, fontFamily: fontFamily.display, color: colors.text },
+            ]}
           >
             {title}
           </Text>
           {subtitle ? (
-            <Text style={{ ...type.body, color: colors.textSecondary, textAlign: 'center' }}>{subtitle}</Text>
+            <Text style={[styles.textCenter, { ...type.body, color: colors.textSecondary }]}>{subtitle}</Text>
           ) : null}
-          <Button title="¡Genial!" onPress={onDismiss} style={{ marginTop: spacing.md, alignSelf: 'stretch' }} />
+          <Button title="¡Genial!" onPress={onDismiss} style={[styles.stretchTop, { marginTop: spacing.md }]} />
         </View>
       </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  card: { alignItems: 'center', maxWidth: 360, width: '100%' },
+  icon: { fontSize: 64 },
+  textCenter: { textAlign: 'center' },
+  stretchTop: { alignSelf: 'stretch' },
+});

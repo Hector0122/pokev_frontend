@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
@@ -92,10 +92,10 @@ export default function EditCardScreen({ route, navigation }: Props) {
   const canSave = values.setName.trim().length > 0 && values.cardNumber.trim().length > 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm }}>
+    <SafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
+      <View style={[styles.headerRow, { padding: spacing.md, gap: spacing.sm }]}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
-          <Text style={{ fontSize: 24, color: colors.text }}>←</Text>
+          <Text style={[styles.backArrow, { color: colors.text }]}>←</Text>
         </Pressable>
         <Text style={{ ...type.h1, color: colors.text }}>✏️ Editar carta</Text>
       </View>
@@ -117,3 +117,9 @@ export default function EditCardScreen({ route, navigation }: Props) {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  backArrow: { fontSize: 24 },
+});

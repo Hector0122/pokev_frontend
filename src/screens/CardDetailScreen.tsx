@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
@@ -20,9 +20,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CardDetail'>;
 function InfoRow({ label, value }: { label: string; value: string }) {
   const { colors, spacing, type } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xxs }}>
+    <View style={[styles.rowBetween, { paddingVertical: spacing.xxs }]}>
       <Text style={{ ...type.bodySm, color: colors.textSecondary }}>{label}</Text>
-      <Text style={{ ...type.bodySm, color: colors.text, fontWeight: '600' }}>{value}</Text>
+      <Text style={[styles.bold, { ...type.bodySm, color: colors.text }]}>{value}</Text>
     </View>
   );
 }
@@ -64,17 +64,17 @@ export default function CardDetailScreen({ route, navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm }}>
+    <SafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
+      <View style={[styles.headerRow, { padding: spacing.md, gap: spacing.sm }]}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
-          <Text style={{ fontSize: 24, color: colors.text }}>←</Text>
+          <Text style={[styles.backArrow, { color: colors.text }]}>←</Text>
         </Pressable>
-        <View style={{ flex: 1 }} />
+        <View style={styles.flex1} />
         <Pressable onPress={() => navigation.navigate('EditCard', { cardId })} hitSlop={12}>
-          <Text style={{ fontSize: 22 }}>✏️</Text>
+          <Text style={styles.icon22}>✏️</Text>
         </Pressable>
         <Pressable onPress={confirmDelete} hitSlop={12} style={{ marginLeft: spacing.md }}>
-          <Text style={{ fontSize: 22 }}>🗑️</Text>
+          <Text style={styles.icon22}>🗑️</Text>
         </Pressable>
       </View>
 
@@ -96,34 +96,32 @@ export default function CardDetailScreen({ route, navigation }: Props) {
                     // verla más grande que 180×180, ni con la foto real
                     // escaneada de la carta).
                     onPress={() => (artwork ? setViewerVisible(true) : undefined)}
-                    style={{
-                      backgroundColor: info.color + '22',
-                      borderRadius: radius.lg,
-                      alignItems: 'center',
-                      padding: spacing.lg,
-                    }}
+                    style={[
+                      styles.centered,
+                      { backgroundColor: info.color + '22', borderRadius: radius.lg, padding: spacing.lg },
+                    ]}
                   >
                     {artwork ? (
-                      <Image source={{ uri: artwork }} style={{ width: 180, height: 180 }} resizeMode="contain" />
+                      <Image source={{ uri: artwork }} style={styles.artwork} resizeMode="contain" />
                     ) : (
-                      <Text style={{ fontSize: 80 }}>{info.icon}</Text>
+                      <Text style={styles.artworkIcon}>{info.icon}</Text>
                     )}
                   </Pressable>
 
                   <Pressable onPress={() => navigation.navigate('PokemonDetail', { pokemonId: card.pokemon.id })}>
-                    <Text style={{ ...type.display, fontFamily: fontFamily.display, color: colors.text, textTransform: 'capitalize' }}>
+                    <Text style={[styles.capitalize, { ...type.display, fontFamily: fontFamily.display, color: colors.text }]}>
                       {card.pokemon.name}
                     </Text>
                     <Text style={{ ...type.body, color: colors.textSecondary }}>
                       {info.icon} {info.es}
                       {card.pokemon.secondaryType ? ` · ${typeInfo(card.pokemon.secondaryType).es}` : ''}
                     </Text>
-                    <Text style={{ ...type.bodySm, color: colors.primary, fontWeight: '600', marginTop: spacing.xxs }}>
+                    <Text style={[styles.bold, { ...type.bodySm, color: colors.primary, marginTop: spacing.xxs }]}>
                       Ver Pokémon →
                     </Text>
                   </Pressable>
 
-                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <View style={[styles.row, { gap: spacing.sm }]}>
                     {(['DAD', 'KID'] as const).map((role) => {
                       const trainer = (trainersQuery.data ?? []).find((t) => t.role === role);
                       const isFavorite = favoriteRoles.has(role);
@@ -131,21 +129,19 @@ export default function CardDetailScreen({ route, navigation }: Props) {
                         <Pressable
                           key={role}
                           onPress={() => handleToggleFavorite(role, isFavorite)}
-                          style={{
-                            flex: 1,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: spacing.xxs,
-                            paddingVertical: spacing.sm,
-                            borderRadius: radius.sm,
-                            backgroundColor: isFavorite ? colors.accentSoft : colors.surfaceAlt,
-                            borderWidth: 1,
-                            borderColor: isFavorite ? colors.accent : colors.border,
-                          }}
+                          style={[
+                            styles.favoriteButton,
+                            {
+                              gap: spacing.xxs,
+                              paddingVertical: spacing.sm,
+                              borderRadius: radius.sm,
+                              backgroundColor: isFavorite ? colors.accentSoft : colors.surfaceAlt,
+                              borderColor: isFavorite ? colors.accent : colors.border,
+                            },
+                          ]}
                         >
-                          <Text style={{ fontSize: 18 }}>{isFavorite ? '❤️' : '🤍'}</Text>
-                          <Text style={{ ...type.bodySm, color: colors.text, fontWeight: '600' }}>
+                          <Text style={styles.icon18}>{isFavorite ? '❤️' : '🤍'}</Text>
+                          <Text style={[styles.bold, { ...type.bodySm, color: colors.text }]}>
                             {trainer?.name ?? role}
                           </Text>
                         </Pressable>
@@ -166,10 +162,18 @@ export default function CardDetailScreen({ route, navigation }: Props) {
                   </View>
 
                   {card.attacks && card.attacks.length > 0 ? (
-                    <View style={{ backgroundColor: colors.cardBg, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs, ...elevation.sm }}>
+                    <View
+                      style={{
+                        backgroundColor: colors.cardBg,
+                        borderRadius: radius.md,
+                        padding: spacing.md,
+                        gap: spacing.xs,
+                        ...elevation.sm,
+                      }}
+                    >
                       <Text style={{ ...type.h2, color: colors.text }}>Ataques</Text>
                       {card.attacks.map((attack, index) => (
-                        <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <View key={index} style={styles.rowBetween}>
                           <Text style={{ ...type.bodySm, color: colors.text }}>{attack.name}</Text>
                           {attack.damage ? (
                             <Text style={{ ...type.bodySm, color: colors.textSecondary, fontFamily: fontFamily.mono }}>
@@ -193,9 +197,22 @@ export default function CardDetailScreen({ route, navigation }: Props) {
                     ) : null}
                   </View>
 
-                  <View style={{ backgroundColor: colors.cardBg, borderRadius: radius.md, padding: spacing.md, gap: spacing.xxs, ...elevation.sm }}>
+                  <View
+                    style={{
+                      backgroundColor: colors.cardBg,
+                      borderRadius: radius.md,
+                      padding: spacing.md,
+                      gap: spacing.xxs,
+                      ...elevation.sm,
+                    }}
+                  >
                     <Text style={{ ...type.h2, color: colors.text }}>📝 Recuerdo</Text>
-                    <Text style={{ ...type.body, color: card.memory ? colors.text : colors.textMuted, fontStyle: card.memory ? 'normal' : 'italic' }}>
+                    <Text
+                      style={[
+                        card.memory ? styles.normalStyle : styles.italicStyle,
+                        { ...type.body, color: card.memory ? colors.text : colors.textMuted },
+                      ]}
+                    >
                       {card.memory || 'Todavía no guardamos un recuerdo para esta carta.'}
                     </Text>
                   </View>
@@ -223,3 +240,21 @@ export default function CardDetailScreen({ route, navigation }: Props) {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  row: { flexDirection: 'row' },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between' },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  centered: { alignItems: 'center' },
+  bold: { fontWeight: '600' },
+  capitalize: { textTransform: 'capitalize' },
+  backArrow: { fontSize: 24 },
+  icon22: { fontSize: 22 },
+  icon18: { fontSize: 18 },
+  artwork: { width: 180, height: 180 },
+  artworkIcon: { fontSize: 80 },
+  favoriteButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  normalStyle: { fontStyle: 'normal' },
+  italicStyle: { fontStyle: 'italic' },
+});

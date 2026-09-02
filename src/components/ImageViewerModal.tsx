@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
@@ -154,43 +154,29 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
           de App.tsx no la alcanza, así que sin este segundo acá los gestos
           (tap simple para voltear, sobre todo) no se reconocían bien: el
           pinch/pan "colaban" por accidente pero el tap nunca disparaba. */}
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' }}>
+      <GestureHandlerRootView style={styles.root}>
         <Pressable
           onPress={onClose}
           hitSlop={16}
           accessibilityRole="button"
           accessibilityLabel="Cerrar"
-          style={{
-            position: 'absolute',
-            top: 48,
-            right: 20,
-            zIndex: 1,
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            backgroundColor: 'rgba(255,255,255,0.15)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={styles.closeButton}
         >
-          <Text style={{ color: '#FFFFFF', fontSize: 22 }}>✕</Text>
+          <Text style={styles.closeIcon}>✕</Text>
         </Pressable>
 
         <GestureDetector gesture={composed}>
-          <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center' }, zoomStyle]}>
+          <Animated.View style={[styles.centered, zoomStyle]}>
             {imageUri ? (
               <Animated.View style={[imageSize, tiltStyle]}>
                 <Animated.Image
                   source={{ uri: imageUri }}
-                  style={[{ width: '100%', height: '100%', backfaceVisibility: 'hidden' }, frontStyle]}
+                  style={[styles.face, frontStyle]}
                   resizeMode="contain"
                 />
                 <Animated.Image
                   source={require('../../assets/icons/card_reverse.png')}
-                  style={[
-                    { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backfaceVisibility: 'hidden' },
-                    backStyle,
-                  ]}
+                  style={[styles.face, styles.backFace, backStyle]}
                   resizeMode="contain"
                 />
               </Animated.View>
@@ -203,3 +189,23 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  closeButton: {
+    position: 'absolute',
+    top: 48,
+    right: 20,
+    zIndex: 1,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeIcon: { color: '#FFFFFF', fontSize: 22 },
+  face: { width: '100%', height: '100%', backfaceVisibility: 'hidden' },
+  backFace: { position: 'absolute', top: 0, left: 0 },
+});

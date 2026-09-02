@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import Button from './Button';
 import LoadingSpinner from './LoadingSpinner';
@@ -21,7 +21,7 @@ export default function QueryState({ isLoading, error, onRetry, children }: Prop
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}>
+      <View style={[styles.centered, { padding: spacing.xl }]}>
         <LoadingSpinner size={56} />
       </View>
     );
@@ -30,17 +30,9 @@ export default function QueryState({ isLoading, error, onRetry, children }: Prop
   if (error) {
     const message = error instanceof Error ? error.message : 'Algo salió mal. Probá de nuevo.';
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: spacing.xxl,
-          gap: spacing.md,
-        }}
-      >
-        <Text style={{ fontSize: 40 }}>📡</Text>
-        <Text style={{ ...type.body, color: colors.textSecondary, textAlign: 'center' }}>{message}</Text>
+      <View style={[styles.centered, { padding: spacing.xxl, gap: spacing.md }]}>
+        <Text style={styles.icon}>📡</Text>
+        <Text style={[styles.textCenter, { ...type.body, color: colors.textSecondary }]}>{message}</Text>
         {onRetry ? <Button title="Reintentar" onPress={onRetry} variant="ghost" /> : null}
       </View>
     );
@@ -48,3 +40,9 @@ export default function QueryState({ isLoading, error, onRetry, children }: Prop
 
   return <>{children}</>;
 }
+
+const styles = StyleSheet.create({
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  icon: { fontSize: 40 },
+  textCenter: { textAlign: 'center' },
+});

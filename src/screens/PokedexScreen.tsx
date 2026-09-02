@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Image, Pressable, SectionList, Text, View } from 'react-native';
+import { Image, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -34,7 +34,7 @@ export default function PokedexScreen() {
   }, [pokemonQuery.data]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={{ padding: spacing.lg, paddingBottom: spacing.sm }}>
         <Text style={{ ...type.display, fontFamily: fontFamily.display, color: colors.text }}>Nuestros Pokémon</Text>
       </View>
@@ -56,24 +56,24 @@ export default function PokedexScreen() {
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => navigation.navigate('PokemonDetail', { pokemonId: item.id })}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: spacing.md,
-                  backgroundColor: colors.cardBg,
-                  borderRadius: radius.md,
-                  padding: spacing.sm,
-                  marginBottom: spacing.xs,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
+                style={[
+                  styles.row,
+                  {
+                    gap: spacing.md,
+                    backgroundColor: colors.cardBg,
+                    borderRadius: radius.md,
+                    padding: spacing.sm,
+                    marginBottom: spacing.xs,
+                    borderColor: colors.border,
+                  },
+                ]}
               >
                 {item.spriteUrl ? (
-                  <Image source={{ uri: item.spriteUrl }} style={{ width: 48, height: 48 }} resizeMode="contain" />
+                  <Image source={{ uri: item.spriteUrl }} style={styles.sprite} resizeMode="contain" />
                 ) : (
-                  <Text style={{ fontSize: 32 }}>{typeInfo(item.primaryType).icon}</Text>
+                  <Text style={styles.spriteIcon}>{typeInfo(item.primaryType).icon}</Text>
                 )}
-                <Text style={{ ...type.body, color: colors.text, textTransform: 'capitalize' }}>{item.name}</Text>
+                <Text style={[styles.capitalize, { ...type.body, color: colors.text }]}>{item.name}</Text>
               </Pressable>
             )}
           />
@@ -91,3 +91,11 @@ export default function PokedexScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', borderWidth: 1 },
+  sprite: { width: 48, height: 48 },
+  spriteIcon: { fontSize: 32 },
+  capitalize: { textTransform: 'capitalize' },
+});

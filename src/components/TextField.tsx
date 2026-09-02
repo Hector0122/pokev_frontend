@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TextInput, TextInputProps, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 
 interface Props extends TextInputProps {
@@ -19,15 +19,14 @@ export default function TextField({ label, required, style, ...inputProps }: Pro
       <TextInput
         placeholderTextColor={colors.textMuted}
         style={[
+          styles.input,
           {
             ...type.body,
             color: colors.text,
             backgroundColor: colors.inputBg,
-            borderWidth: 1,
             borderColor: colors.border,
             borderRadius: radius.sm,
             paddingHorizontal: spacing.sm,
-            paddingVertical: 10,
           },
           style,
         ]}
@@ -36,3 +35,7 @@ export default function TextField({ label, required, style, ...inputProps }: Pro
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  input: { borderWidth: 1, paddingVertical: 10 },
+});

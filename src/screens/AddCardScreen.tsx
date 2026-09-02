@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Image, Platform, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
+import { FlatList, Image, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
@@ -223,17 +223,17 @@ export default function AddCardScreen({ navigation, route }: Props) {
   const canSave = !!selected && values.setName.trim().length > 0 && values.cardNumber.trim().length > 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm }}>
+    <SafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
+      <View style={[styles.headerRow, { padding: spacing.md, gap: spacing.sm }]}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
-          <Text style={{ fontSize: 24, color: colors.text }}>←</Text>
+          <Text style={[styles.backArrow, { color: colors.text }]}>←</Text>
         </Pressable>
         <AppIcon name="pokebola" size={24} />
         <Text style={{ ...type.h1, color: colors.text }}>Agregar carta</Text>
       </View>
 
       {!selected ? (
-        <View style={{ flex: 1, padding: spacing.lg, gap: spacing.md }}>
+        <View style={[styles.flex1, { padding: spacing.lg, gap: spacing.md }]}>
           <TextField
             label="¿Qué Pokémon es?"
             required
@@ -253,23 +253,17 @@ export default function AddCardScreen({ navigation, route }: Props) {
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => handlePickPokemon(item)}
-                style={{
-                  flex: 1,
-                  alignItems: 'center',
-                  gap: spacing.xxs,
-                  padding: spacing.sm,
-                  backgroundColor: colors.cardBg,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
+                style={[
+                  styles.speciesTile,
+                  { gap: spacing.xxs, padding: spacing.sm, backgroundColor: colors.cardBg, borderColor: colors.border },
+                ]}
               >
                 <Image
                   source={{ uri: officialArtworkUrl(item.id) }}
-                  style={{ width: 64, height: 64 }}
+                  style={styles.speciesImage}
                   resizeMode="contain"
                 />
-                <Text numberOfLines={1} style={{ ...type.caption, color: colors.text, textTransform: 'capitalize' }}>
+                <Text numberOfLines={1} style={[styles.capitalize, { ...type.caption, color: colors.text }]}>
                   {item.name}
                 </Text>
               </Pressable>
@@ -278,14 +272,14 @@ export default function AddCardScreen({ navigation, route }: Props) {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.huge }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <View style={[styles.headerRow, { gap: spacing.md }]}>
             <Image
               source={{ uri: selected.details?.spriteUrl ?? officialArtworkUrl(selected.id) }}
-              style={{ width: 72, height: 72 }}
+              style={styles.selectedImage}
               resizeMode="contain"
             />
-            <View style={{ flex: 1 }}>
-              <Text style={{ ...type.h1, color: colors.text, textTransform: 'capitalize' }}>{selected.name}</Text>
+            <View style={styles.flex1}>
+              <Text style={[styles.capitalize, { ...type.h1, color: colors.text }]}>{selected.name}</Text>
               {loadingDetails ? (
                 <Text style={{ ...type.caption, color: colors.textSecondary }}>Buscando su info…</Text>
               ) : selected.detailsFailed ? (
@@ -295,7 +289,7 @@ export default function AddCardScreen({ navigation, route }: Props) {
               ) : null}
             </View>
             <Pressable onPress={() => setSelected(null)}>
-              <Text style={{ ...type.bodySm, color: colors.primary, fontWeight: '600' }}>Cambiar</Text>
+              <Text style={[styles.bold, { ...type.bodySm, color: colors.primary }]}>Cambiar</Text>
             </Pressable>
           </View>
 
@@ -304,11 +298,7 @@ export default function AddCardScreen({ navigation, route }: Props) {
             // trainer pueda notar antes de guardar si el escaneo agarró otra
             // cosa que no era la carta, en vez de enterarse recién en
             // Colección (ver design.md de add-scan-and-favorites-widget).
-            <Image
-              source={{ uri: values.imageUrl }}
-              style={{ width: 140, height: 196, alignSelf: 'center', borderRadius: 8 }}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: values.imageUrl }} style={styles.previewImage} resizeMode="cover" />
           ) : null}
 
           <CardFieldsForm values={values} onChange={updateValues} trainers={trainersQuery.data ?? []} showFavorites />
@@ -326,3 +316,15 @@ export default function AddCardScreen({ navigation, route }: Props) {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  backArrow: { fontSize: 24 },
+  capitalize: { textTransform: 'capitalize' },
+  bold: { fontWeight: '600' },
+  speciesTile: { flex: 1, alignItems: 'center', borderRadius: 14, borderWidth: 1 },
+  speciesImage: { width: 64, height: 64 },
+  selectedImage: { width: 72, height: 72 },
+  previewImage: { width: 140, height: 196, alignSelf: 'center', borderRadius: 8 },
+});

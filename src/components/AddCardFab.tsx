@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, StyleProp, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, ViewStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -76,24 +76,23 @@ export default function AddCardFab({ style }: Props) {
       }}
       accessibilityRole="button"
       accessibilityLabel="Agregar carta"
-      style={[
-        {
-          position: 'absolute',
-          right: 20,
-          bottom: 20,
-          width: 64,
-          height: 64,
-          borderRadius: 32,
-          backgroundColor: '#FFFFFF',
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        elevation.lg,
-        animatedStyle,
-        style,
-      ]}
+      style={[styles.fab, elevation.lg, animatedStyle, style]}
     >
       {scanning ? <LoadingSpinner size={40} /> : <AppIcon name="pokebola" size={56} />}
     </AnimatedPressable>
   );
 }
+
+const styles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

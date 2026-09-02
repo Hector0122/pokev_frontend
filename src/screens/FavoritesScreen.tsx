@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
@@ -17,7 +17,7 @@ function CardRow({ cards, onPressCard }: { cards: Card[]; onPressCard: (id: stri
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
       {cards.map((card) => (
-        <View key={card.id} style={{ width: 120 }}>
+        <View key={card.id} style={styles.tileWidth}>
           <CardTile card={card} onPress={() => onPressCard(card.id)} />
         </View>
       ))}
@@ -86,10 +86,10 @@ export default function FavoritesScreen({ navigation }: Props) {
   const goToCard = (id: string) => navigation.navigate('CardDetail', { cardId: id });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right']}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md }}>
+    <SafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <View style={[styles.headerRow, { padding: spacing.md }]}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
-          <Text style={{ fontSize: 24, color: colors.text }}>←</Text>
+          <Text style={[styles.backArrow, { color: colors.text }]}>←</Text>
         </Pressable>
       </View>
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
@@ -123,3 +123,10 @@ export default function FavoritesScreen({ navigation }: Props) {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  backArrow: { fontSize: 24 },
+  tileWidth: { width: 120 },
+});

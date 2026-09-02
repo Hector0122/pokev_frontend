@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
@@ -150,7 +150,7 @@ export default function SearchScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={{ padding: spacing.lg, paddingBottom: spacing.sm, gap: spacing.md }}>
         <Text style={{ ...type.display, fontFamily: fontFamily.display, color: colors.text }}>Buscador</Text>
         <TextField
@@ -163,7 +163,7 @@ export default function SearchScreen() {
       </View>
 
       {isSearching ? (
-        <View style={{ alignItems: 'center', marginTop: spacing.md }}>
+        <View style={[styles.centered, { marginTop: spacing.md }]}>
           <LoadingSpinner size={32} />
         </View>
       ) : null}
@@ -172,83 +172,78 @@ export default function SearchScreen() {
       ) : null}
 
       {!isSearching && query.trim().length >= 2 && results.length === 0 && !searchError ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl, gap: spacing.sm }}>
+        <View style={[styles.emptyState, { padding: spacing.xxl, gap: spacing.sm }]}>
           <AppIcon name="psyduck" size={72} />
-          <Text style={{ ...type.h1, color: colors.text, textAlign: 'center' }}>
+          <Text style={[styles.textCenter, { ...type.h1, color: colors.text }]}>
             No encontramos cartas de "{query.trim()}"
           </Text>
         </View>
       ) : (
         <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            flexGrow: 1,
-            justifyContent: groups.length === 0 ? 'center' : 'flex-start',
-            padding: spacing.lg,
-            gap: spacing.lg,
-            paddingBottom: spacing.huge,
-          }}
+          style={styles.flex1}
+          contentContainerStyle={[
+            styles.scrollContent,
+            groups.length === 0 ? styles.justifyCenter : styles.justifyStart,
+            { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.huge },
+          ]}
         >
           {groups.map((group) => (
             <View key={group.setId} style={{ gap: spacing.sm }}>
               <Text style={{ ...type.h2, color: colors.text }}>{group.setName}</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+              <View style={[styles.setRow, { gap: spacing.sm }]}>
                 {group.cards.map((card) => {
                   const owned = isOwned(card);
                   return (
                     <Pressable
                       key={card.id}
                       onPress={() => openCard(card)}
-                      style={{
-                        width: 104,
-                        borderRadius: radius.md,
-                        backgroundColor: colors.cardBg,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                        padding: spacing.xs,
-                        gap: spacing.xxs,
-                      }}
+                      style={[
+                        styles.cardTile,
+                        {
+                          borderRadius: radius.md,
+                          backgroundColor: colors.cardBg,
+                          borderColor: colors.border,
+                          padding: spacing.xs,
+                          gap: spacing.xxs,
+                        },
+                      ]}
                     >
-                      <View style={{ position: 'relative' }}>
+                      <View style={styles.relative}>
                         {card.image ? (
                           <Image
                             source={{ uri: cardImageUrl(card.image, 'low', 'webp') }}
-                            style={{ width: '100%', height: 130, borderRadius: radius.sm }}
+                            style={[styles.cardImage, { borderRadius: radius.sm }]}
                             resizeMode="contain"
                           />
                         ) : (
                           <View
-                            style={{
-                              width: '100%',
-                              height: 130,
-                              borderRadius: radius.sm,
-                              backgroundColor: colors.surfaceAlt,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
+                            style={[
+                              styles.cardImage,
+                              styles.centerBoth,
+                              { borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+                            ]}
                           >
                             <AppIcon name="pokebola" size={40} />
                           </View>
                         )}
                         {owned ? (
                           <View
-                            style={{
-                              position: 'absolute',
-                              top: spacing.xxs,
-                              right: spacing.xxs,
-                              width: 24,
-                              height: 24,
-                              borderRadius: radius.pill,
-                              backgroundColor: colors.primary,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
+                            style={[
+                              styles.ownedBadge,
+                              styles.centerBoth,
+                              {
+                                top: spacing.xxs,
+                                right: spacing.xxs,
+                                borderRadius: radius.pill,
+                                backgroundColor: colors.primary,
+                              },
+                            ]}
                           >
-                            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>✓</Text>
+                            <Text style={styles.ownedBadgeCheck}>✓</Text>
                           </View>
                         ) : null}
                       </View>
-                      <Text numberOfLines={1} style={{ ...type.caption, color: colors.text, fontWeight: '600' }}>
+                      <Text numberOfLines={1} style={[styles.bold, { ...type.caption, color: colors.text }]}>
                         {card.name}
                       </Text>
                       <Text style={{ ...type.caption, color: colors.textSecondary }}>#{card.localId}</Text>
@@ -260,9 +255,9 @@ export default function SearchScreen() {
           ))}
 
           {query.trim().length < 2 ? (
-            <View style={{ alignItems: 'center', gap: spacing.sm }}>
+            <View style={[styles.centered, { gap: spacing.sm }]}>
               <AppIcon name="ditto" size={96} />
-              <Text style={{ ...type.body, color: colors.textSecondary, textAlign: 'center' }}>
+              <Text style={[styles.textCenter, { ...type.body, color: colors.textSecondary }]}>
                 Escribí el nombre de un Pokémon para ver todas sus cartas.
               </Text>
             </View>
@@ -273,19 +268,19 @@ export default function SearchScreen() {
       <Modal visible={!!selectedId} transparent animationType="fade" onRequestClose={closeDetail}>
         <Pressable
           onPress={closeDetail}
-          style={{ flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}
+          style={[styles.emptyState, { backgroundColor: colors.overlay, padding: spacing.xl }]}
         >
           <Pressable
             onPress={() => {}}
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: radius.xl,
-              padding: spacing.xl,
-              gap: spacing.sm,
-              alignItems: 'center',
-              maxWidth: 360,
-              width: '100%',
-            }}
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.surface,
+                borderRadius: radius.xl,
+                padding: spacing.xl,
+                gap: spacing.sm,
+              },
+            ]}
           >
             {detailLoading ? <LoadingSpinner size={40} /> : null}
             {detailError ? <Text style={{ ...type.bodySm, color: colors.danger }}>{detailError}</Text> : null}
@@ -294,19 +289,24 @@ export default function SearchScreen() {
                 {selectedDetail.image ? (
                   <Image
                     source={{ uri: cardImageUrl(selectedDetail.image, 'high', 'png') }}
-                    style={{ width: 220, height: 300 }}
+                    style={styles.detailImage}
                     resizeMode="contain"
                   />
                 ) : null}
-                <Text style={{ ...type.h1, color: colors.text, textAlign: 'center' }}>{selectedDetail.name}</Text>
-                <Text style={{ ...type.bodySm, color: colors.textSecondary, textAlign: 'center' }}>
+                <Text style={[styles.textCenter, { ...type.h1, color: colors.text }]}>{selectedDetail.name}</Text>
+                <Text style={[styles.textCenter, { ...type.bodySm, color: colors.textSecondary }]}>
                   {selectedDetail.set.name} · #{selectedDetail.localId}
                   {selectedDetail.rarity ? ` · ${selectedDetail.rarity}` : ''}
                 </Text>
                 {isOwned(selectedDetail) ? (
-                  <Text style={{ ...type.bodySm, color: colors.primary, fontWeight: '600' }}>✓ Ya la tenemos</Text>
+                  <Text style={[styles.bold, { ...type.bodySm, color: colors.primary }]}>✓ Ya la tenemos</Text>
                 ) : (
-                  <Button title="Agregar esta carta" icon={<AppIcon name="pokebola" size={20} />} onPress={goAddThisCard} style={{ marginTop: spacing.xs, alignSelf: 'stretch' }} />
+                  <Button
+                    title="Agregar esta carta"
+                    icon={<AppIcon name="pokebola" size={20} />}
+                    onPress={goAddThisCard}
+                    style={[styles.stretchTop, { marginTop: spacing.xs }]}
+                  />
                 )}
               </>
             ) : null}
@@ -316,3 +316,24 @@ export default function SearchScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  centered: { alignItems: 'center' },
+  centerBoth: { alignItems: 'center', justifyContent: 'center' },
+  textCenter: { textAlign: 'center' },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  scrollContent: { flexGrow: 1 },
+  justifyCenter: { justifyContent: 'center' },
+  justifyStart: { justifyContent: 'flex-start' },
+  setRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  cardTile: { width: 104, borderWidth: 1 },
+  relative: { position: 'relative' },
+  cardImage: { width: '100%', height: 130 },
+  ownedBadge: { position: 'absolute', width: 24, height: 24 },
+  ownedBadgeCheck: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  bold: { fontWeight: '600' },
+  modalCard: { alignItems: 'center', maxWidth: 360, width: '100%' },
+  detailImage: { width: 220, height: 300 },
+  stretchTop: { alignSelf: 'stretch' },
+});
