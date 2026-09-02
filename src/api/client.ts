@@ -7,7 +7,7 @@
  * trace ni el JSON crudo del backend) — ver local-collection-storage spec,
  * "Writes require network connectivity and fail clearly".
  */
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, APP_API_KEY } from '../config';
 
 export class ApiError extends Error {
   constructor(
@@ -39,6 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers: {
         'Content-Type': 'application/json',
+        'x-app-key': APP_API_KEY,
         ...init?.headers,
       },
     });

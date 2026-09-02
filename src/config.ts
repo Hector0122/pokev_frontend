@@ -15,3 +15,11 @@
  * (ej. `http://192.168.x.x:3000`) mientras la uses, y devolvelo después.
  */
 export const API_BASE_URL = 'https://pokevbackend-production.up.railway.app';
+
+/**
+ * Key compartida que el backend exige en cada request (header `x-app-key`,
+ * ver `ApiKeyGuard` en pokev_backend) — a diferencia de `API_BASE_URL`
+ * arriba, esta SÍ tiene que quedar fuera de git: viene de `.env` (que está
+ * en `.gitignore`) vía `react-native-dotenv`, no hardcodeada acá.
+ */
+export { APP_API_KEY } from '@env';
