@@ -14,6 +14,8 @@
  * backend sin tocar producción, reemplazá esto por la IP LAN de tu máquina
  * (ej. `http://192.168.x.x:3000`) mientras la uses, y devolvelo después.
  */
+import { APP_API_KEY as ENV_APP_API_KEY } from '@env';
+
 export const API_BASE_URL = 'https://pokevbackend-production.up.railway.app';
 
 /**
@@ -21,5 +23,9 @@ export const API_BASE_URL = 'https://pokevbackend-production.up.railway.app';
  * ver `ApiKeyGuard` en pokev_backend) — a diferencia de `API_BASE_URL`
  * arriba, esta SÍ tiene que quedar fuera de git: viene de `.env` (que está
  * en `.gitignore`) vía `react-native-dotenv`, no hardcodeada acá.
+ *
+ * Nota: `export { X } from '@env'` (re-export directo) NO lo reescribe el
+ * plugin de react-native-dotenv, solo `import { X } from '@env'` — por eso
+ * el import + re-export en dos pasos en vez de uno solo.
  */
-export { APP_API_KEY } from '@env';
+export const APP_API_KEY = ENV_APP_API_KEY;
