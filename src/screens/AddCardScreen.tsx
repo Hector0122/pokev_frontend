@@ -21,6 +21,7 @@ import {
   type PokemonDetails,
   type PokemonSpeciesListItem,
 } from '../services/pokeapi';
+import { uploadCardImage } from '../services/scan';
 import type { RootStackParamList } from '../navigation/types';
 import type { AchievementStatus, CreateCardInput } from '../api/types';
 
@@ -31,6 +32,27 @@ interface SelectedPokemon {
   name: string;
   details: PokemonDetails | null;
   detailsFailed: boolean;
+}
+
+/**
+ * Si `imageUrl` es un `data:` local (foto recién escaneada, todavía sin
+ * subir — ver AddCardFab, que ya NO sube a R2 apenas se toma la foto para no
+ * dejar fotos huérfanas de escaneos que nunca se guardan), la sube a R2 acá,
+ * recién cuando el trainer de verdad confirma "Guardar carta". Si ya es una
+ * URL real (http/R2, por ejemplo de una carta encontrada en el Buscador) no
+ * hace nada. Si la subida falla (sin red, servidor sin R2 configurado),
+ * devuelve el `data:` tal cual — el backend lo sigue aceptando como
+ * respaldo, nunca se pierde la foto por esto.
+ */
+async function resolveImageUrlForSave(imageUrl: string): Promise<string> {
+  const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/s);
+  if (!match) return imageUrl;
+  const [, mimeType, base64] = match;
+  try {
+    return await uploadCardImage(base64, mimeType);
+  } catch {
+    return imageUrl;
+  }
 }
 
 /** Flujo de "Agregar carta" (§6): elegir Pokémon → completar datos → cantidad → favorita → guardar. */
@@ -145,6 +167,9 @@ export default function AddCardScreen({ navigation, route }: Props) {
 
     const wasAlreadyDiscovered = (discoveredQuery.data ?? []).some((p) => p.id === selected.id);
 
+    const trimmedImageUrl = values.imageUrl.trim();
+    const imageUrl = trimmedImageUrl ? await resolveImageUrlForSave(trimmedImageUrl) : undefined;
+
     const input: CreateCardInput = {
       pokemon: {
         id: selected.id,
@@ -162,7 +187,7 @@ export default function AddCardScreen({ navigation, route }: Props) {
       year: values.year ? Number(values.year) : undefined,
       language: values.language.trim() || undefined,
       variant: values.variant.trim() || undefined,
-      imageUrl: values.imageUrl.trim() || undefined,
+      imageUrl,
       quantity: Number(values.quantity) || 1,
       estimatedValueUsd: values.estimatedValueUsd ? Number(values.estimatedValueUsd) : undefined,
       acquiredAt: values.acquiredAt || new Date().toISOString(),

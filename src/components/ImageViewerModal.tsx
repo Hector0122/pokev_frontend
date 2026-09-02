@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 interface Props {
   visible: boolean;
@@ -10,17 +10,18 @@ interface Props {
 }
 
 /**
- * Visor a pantalla completa con pinch-to-zoom y flip (tap simple) para la
- * foto de una carta. Antes, tocar la imagen en CardDetailScreen navegaba a
- * la especie del Pokémon (ya duplicado por el enlace "Ver Pokémon →"
- * debajo) y no había forma de verla en grande — importa más ahora que la
- * imagen es la foto real escaneada (recortada), no solo arte genérico.
+ * Visor a pantalla completa para la foto de una carta — pinch-to-zoom, tilt
+ * 3D libre al arrastrar (vuelve a plano al soltar, como una carta física que
+ * inclinás con el dedo) y tap simple para voltearla y ver el reverso
+ * (`card_reverse.png`, el mismo dibujo genérico para todas). Antes, tocar la
+ * imagen en CardDetailScreen navegaba a la especie del Pokémon (ya duplicado
+ * por el enlace "Ver Pokémon →" debajo) y no había forma de verla en grande
+ * — importa más ahora que la imagen es la foto real escaneada (recortada),
+ * no solo arte genérico.
  *
- * El flip (girar y mostrar el reverso — `card_reverse.png`, el mismo dibujo
- * genérico para todas las cartas) SOLO existe acá, no en el widget de
- * pantalla de inicio: ahí es imposible animar nada (RemoteViews, ver
- * favoritesWidget.ts), pero acá corre en nuestro propio proceso con
- * Reanimated, igual que el zoom.
+ * Nada de esto existe en el widget de pantalla de inicio — ahí es imposible
+ * animar nada (RemoteViews, ver favoritesWidget.ts), pero acá corre en
+ * nuestro propio proceso con Reanimated.
  */
 export default function ImageViewerModal({ visible, imageUri, onClose }: Props) {
   const { width, height } = useWindowDimensions();
@@ -32,13 +33,24 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  // 0 = mostrando el frente, 180 = mostrando el reverso — ver frontStyle/backStyle.
-  // Se mueve libre mientras se arrastra (pan) y "cae" al lado más cercano al soltar.
-  const flipRotation = useSharedValue(0);
-  const isFlipped = useSharedValue(false);
-  const dragStartRotation = useSharedValue(0);
+  // Tilt 3D libre — sigue el dedo mientras se arrastra, vuelve a (0,0) con
+  // resorte al soltar. Reproduce el patrón que encontró el usuario
+  // ("Interactive3DCard"): nada de estados de reposo ni lógica de a dónde
+  // "cae" — siempre vuelve al mismo lugar, por eso no hace falta la danza de
+  // cancelAnimation/dragStart que tenía el intento anterior (ese sí tenía
+  // ambigüedad de destino — 0 o 180 — y ahí se rompía).
+  const tiltX = useSharedValue(0);
+  const tiltY = useSharedValue(0);
 
-  // Arranca siempre sin zoom y mostrando el frente, no importa cómo quedó la última carta que se vio.
+  // Volteo (frente/reverso) — independiente del tilt, solo por tap. 0 =
+  // frente, 180 = reverso. Un shared value REAL animado desde el tap (no
+  // calculado adentro de useAnimatedStyle, como el ejemplo "FlipCard" que
+  // encontró el usuario) — probado eso primero y el valor usado para decidir
+  // qué cara mostrar (la opacidad) no seguía el progreso cuadro a cuadro de
+  // la animación, se veía siempre el reverso sin importar el ángulo real.
+  const spin = useSharedValue(0);
+
+  // Arranca siempre sin zoom, sin tilt y mostrando el frente, no importa cómo quedó la última carta que se vio.
   useEffect(() => {
     if (!visible) return;
     scale.value = 1;
@@ -47,8 +59,9 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
     translateY.value = 0;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
-    flipRotation.value = 0;
-    isFlipped.value = false;
+    tiltX.value = 0;
+    tiltY.value = 0;
+    spin.value = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, imageUri]);
 
@@ -60,32 +73,19 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
       savedScale.value = scale.value;
     });
 
-  // Sin zoom, arrastrar gira la carta siguiendo el dedo (de punta a punta de
-  // la pantalla, varias veces, = una vuelta completa) — pedido explícito:
-  // "que vaya siguiendo el dedo", no solo el toggle de golpe del tap. Con
-  // zoom, el mismo gesto sigue arrastrando la imagen para explorarla
-  // (comportamiento de antes) — un solo `pan`, ramificado por si hay zoom o no.
-  //
-  // `activeOffsetX([-8, 8])`: sin esto, el gesto arrancaba con el roce más
-  // mínimo (hasta un tap accidentalmente lo activaba un toque) — "apenas
-  // pongo el dedo y ya está girando como loca". Ahora hace falta arrastrar
-  // de verdad al menos 8dp para que empiece a girar. La sensibilidad también
-  // bajó bastante (antes: ancho de pantalla completo = 180°, se sentía muy
-  // brusco) — ahora hacen falta ~2.5 pantallas de arrastre para una vuelta.
+  // Con zoom: arrastrar explora la imagen (translateX/Y, comportamiento de
+  // siempre). Sin zoom: arrastrar inclina la carta en 3D seguiendo el dedo
+  // — clamp a ±25° para que se sienta como "inclinar", no como "voltear"
+  // (para eso ya está el tap). Al soltar, vuelve a plano con resorte.
   const pan = Gesture.Pan()
-    .activeOffsetX([-8, 8])
-    .onStart(() => {
-      dragStartRotation.value = flipRotation.value;
-    })
     .onUpdate((e) => {
       if (savedScale.value > 1) {
         translateX.value = savedTranslateX.value + e.translationX;
         translateY.value = savedTranslateY.value + e.translationY;
         return;
       }
-      // Pequeño margen de rebote (-20/200) al pasar de los extremos, para que no se sienta "topado" en seco.
-      const next = dragStartRotation.value + (e.translationX / (width * 2.5)) * 180;
-      flipRotation.value = Math.max(-20, Math.min(200, next));
+      tiltY.value = Math.max(-25, Math.min(25, e.translationX / 6));
+      tiltX.value = Math.max(-25, Math.min(25, -e.translationY / 6));
     })
     .onEnd(() => {
       if (savedScale.value > 1) {
@@ -93,9 +93,8 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
         savedTranslateY.value = translateY.value;
         return;
       }
-      const restingRotation = flipRotation.value <= 90 ? 0 : 180;
-      isFlipped.value = restingRotation === 180;
-      flipRotation.value = withSpring(restingRotation, { damping: 15 });
+      tiltX.value = withSpring(0);
+      tiltY.value = withSpring(0);
     });
 
   const doubleTap = Gesture.Tap()
@@ -118,8 +117,7 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
   const singleTap = Gesture.Tap()
     .numberOfTaps(1)
     .onEnd(() => {
-      isFlipped.value = !isFlipped.value;
-      flipRotation.value = withSpring(isFlipped.value ? 180 : 0, { damping: 15 });
+      spin.value = withTiming(spin.value === 0 ? 180 : 0, { duration: 400 });
     });
 
   const composed = Gesture.Simultaneous(pinch, pan, Gesture.Exclusive(doubleTap, singleTap));
@@ -128,21 +126,24 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
     transform: [{ translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value }],
   }));
 
+  const tiltStyle = useAnimatedStyle(() => ({
+    transform: [{ perspective: 1000 }, { rotateX: `${tiltX.value}deg` }, { rotateY: `${tiltY.value}deg` }],
+  }));
+
   // Dos caras superpuestas (position: absolute, una encima de la otra) que
   // giran juntas. `backfaceVisibility: hidden` (lo que "debería" ocultar
   // cada cara al pasar los 90°) no anda en Android en esta versión de RN —
   // se ve el reverso de entrada, encima del frente, sin importar el ángulo.
-  // Por eso la ocultamos a mano con `opacity` según de qué lado del giro
-  // está `flipRotation` (0-90 = frente visible, 90-180 = reverso visible).
-  // La del reverso arranca ya girada 180° (por eso el rango de interpolación
-  // es [180, 360], no [0, 180]) para que gire "para el mismo lado" que el frente.
+  // Por eso la ocultamos a mano con `opacity` leyendo `spin.value` directo
+  // (0-90 = frente visible, 90-180 = reverso visible) — SIN pasar por
+  // withTiming/interpolate acá, `spin` ya es el valor animado en sí.
   const frontStyle = useAnimatedStyle(() => ({
-    transform: [{ perspective: 1200 }, { rotateY: `${flipRotation.value}deg` }],
-    opacity: flipRotation.value < 90 ? 1 : 0,
+    transform: [{ perspective: 1000 }, { rotateY: `${spin.value}deg` }],
+    opacity: spin.value < 90 ? 1 : 0,
   }));
   const backStyle = useAnimatedStyle(() => ({
-    transform: [{ perspective: 1200 }, { rotateY: `${interpolate(flipRotation.value, [0, 180], [180, 360])}deg` }],
-    opacity: flipRotation.value < 90 ? 0 : 1,
+    transform: [{ perspective: 1000 }, { rotateY: `${spin.value + 180}deg` }],
+    opacity: spin.value < 90 ? 0 : 1,
   }));
 
   const imageSize = { width: width * 0.92, height: height * 0.75 };
@@ -178,7 +179,7 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
         <GestureDetector gesture={composed}>
           <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center' }, zoomStyle]}>
             {imageUri ? (
-              <View style={imageSize}>
+              <Animated.View style={[imageSize, tiltStyle]}>
                 <Animated.Image
                   source={{ uri: imageUri }}
                   style={[{ width: '100%', height: '100%', backfaceVisibility: 'hidden' }, frontStyle]}
@@ -192,8 +193,10 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
                   ]}
                   resizeMode="contain"
                 />
-              </View>
-            ) : null}
+              </Animated.View>
+            ) : (
+              <View style={imageSize} />
+            )}
           </Animated.View>
         </GestureDetector>
       </GestureHandlerRootView>
