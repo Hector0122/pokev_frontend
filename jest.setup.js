@@ -23,3 +23,15 @@ jest.mock('react-native-reanimated', () => {
     Easing: { bezier: () => (t) => t, linear: (t) => t },
   };
 });
+
+// react-native-document-scanner-plugin (ver src/services/scan.ts) es un
+// TurboModule — a diferencia de los módulos "legacy" (NativeModules.X, que
+// simplemente devuelven undefined si no existen), TurboModuleRegistry.getEnforcing
+// tira un invariant duro en Jest porque no hay runtime nativo. No lo usa
+// ningún test hoy, solo hace falta que el módulo cargue sin explotar.
+jest.mock('react-native-document-scanner-plugin', () => ({
+  __esModule: true,
+  default: { scanDocument: jest.fn() },
+  ResponseType: { Base64: 'base64', ImageFilePath: 'imageFilePath' },
+  ScanDocumentResponseStatus: { Success: 'success', Cancel: 'cancel' },
+}));

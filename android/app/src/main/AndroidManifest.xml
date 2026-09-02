@@ -1,11 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Sin permiso CAMERA a propósito: react-native-image-picker delega en
-         la app de cámara del sistema (intent implícito) para el escaneo de
-         cartas — si declarásemos el permiso acá, la librería exige pedirlo
-         en runtime nosotros mismos; sin declararlo, "no permissions
-         required" según su propia doc. -->
+    <!-- Sin permiso CAMERA a propósito: react-native-document-scanner-plugin
+         (ver src/services/scan.ts) delega en el escáner de documentos de
+         Google Play Services para el escaneo de cartas — es un componente
+         del sistema, no la cámara de la propia app, así que no hace falta
+         declarar ni pedir el permiso en runtime ("no permissions required"
+         según su propia doc, mismo motivo por el que antes tampoco se
+         declaraba con react-native-image-picker). -->
 
 
     <application

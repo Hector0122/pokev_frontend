@@ -7,7 +7,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { motion } from '../theme/tokens';
 import AppIcon from './AppIcon';
 import LoadingSpinner from './LoadingSpinner';
-import { captureCardPhoto, recognizeCard } from '../services/scan';
+import { captureCardPhoto, recognizeCard, uploadCardImage } from '../services/scan';
 import type { RootStackParamList } from '../navigation/types';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -41,17 +41,36 @@ export default function AddCardFab({ style }: Props) {
     try {
       const photo = await captureCardPhoto();
       if (!photo) return; // canceló la cámara — no navegamos a ningún lado
-      const recognized = await recognizeCard(photo.base64, photo.mimeType);
+
+      // Reconocer (Groq) y subir la foto (R2, V0.7) son independientes — en
+      // paralelo, no uno atrás del otro.
+      const [recognizedResult, uploadResult] = await Promise.allSettled([
+        recognizeCard(photo.base64, photo.mimeType),
+        uploadCardImage(photo.base64, photo.mimeType),
+      ]);
+
+      // La foto que sacamos, no una genérica del Pokémon — "no me muestra
+      // la carta". Si la subida a R2 falla (servidor sin configurar, sin
+      // red, etc.) caemos al data:image de siempre — el backend lo sigue
+      // aceptando como respaldo, nunca se pierde la foto por esto.
+      const imageUrl =
+        uploadResult.status === 'fulfilled'
+          ? uploadResult.value
+          : `data:${photo.mimeType};base64,${photo.base64}`;
+
+      // Si falló el reconocimiento (Groq caído, etc.) igual tenemos la foto
+      // — se pasa al flujo manual en vez de perderla, el trainer completa
+      // el resto a mano.
+      const recognized = recognizedResult.status === 'fulfilled' ? recognizedResult.value : null;
+
       navigation.navigate('AddCard', {
-        prefillPokemonName: recognized.pokemonName ?? undefined,
-        prefillSetName: recognized.setName ?? undefined,
-        prefillCardNumber: recognized.cardNumber ?? undefined,
-        // La foto que sacamos, no una genérica del Pokémon — "no me muestra
-        // la carta" (se guarda tal cual, el backend ya acepta data:image además de URLs http).
-        prefillImageUrl: `data:${photo.mimeType};base64,${photo.base64}`,
+        prefillPokemonName: recognized?.pokemonName ?? undefined,
+        prefillSetName: recognized?.setName ?? undefined,
+        prefillCardNumber: recognized?.cardNumber ?? undefined,
+        prefillImageUrl: imageUrl,
       });
     } catch {
-      // Cámara/reconocimiento falló — igual dejamos entrar al flujo manual de siempre.
+      // Cámara falló (permiso, sin cámara, etc.) — igual dejamos entrar al flujo manual de siempre.
       navigation.navigate('AddCard', undefined);
     } finally {
       setScanning(false);

@@ -274,6 +274,18 @@ export default function AddCardScreen({ navigation, route }: Props) {
             </Pressable>
           </View>
 
+          {values.imageUrl ? (
+            // La foto real (recortada) que se va a guardar — para que el
+            // trainer pueda notar antes de guardar si el escaneo agarró otra
+            // cosa que no era la carta, en vez de enterarse recién en
+            // Colección (ver design.md de add-scan-and-favorites-widget).
+            <Image
+              source={{ uri: values.imageUrl }}
+              style={{ width: 140, height: 196, alignSelf: 'center', borderRadius: 8 }}
+              resizeMode="cover"
+            />
+          ) : null}
+
           <CardFieldsForm values={values} onChange={updateValues} trainers={trainersQuery.data ?? []} showFavorites />
 
           {saveError ? <Text style={{ ...type.bodySm, color: colors.danger }}>{saveError}</Text> : null}

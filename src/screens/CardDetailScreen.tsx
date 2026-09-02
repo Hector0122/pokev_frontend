@@ -11,6 +11,7 @@ import { runWithAchievementUnlockDetection } from '../hooks/queries/useAchieveme
 import QueryState from '../components/QueryState';
 import Button from '../components/Button';
 import CelebrationModal from '../components/CelebrationModal';
+import ImageViewerModal from '../components/ImageViewerModal';
 import type { RootStackParamList } from '../navigation/types';
 import type { AchievementStatus } from '../api/types';
 
@@ -38,6 +39,7 @@ export default function CardDetailScreen({ route, navigation }: Props) {
   const setFavorite = useSetCardFavorite();
 
   const [celebration, setCelebration] = useState<{ icon: string; title: string } | null>(null);
+  const [viewerVisible, setViewerVisible] = useState(false);
 
   function confirmDelete() {
     Alert.alert('Eliminar carta', '¿Seguro que querés eliminar esta carta de la colección?', [
@@ -88,7 +90,12 @@ export default function CardDetailScreen({ route, navigation }: Props) {
               return (
                 <>
                   <Pressable
-                    onPress={() => navigation.navigate('PokemonDetail', { pokemonId: card.pokemon.id })}
+                    // La navegación a la especie ya está duplicada en el
+                    // enlace "Ver Pokémon →" de abajo — este tap abre la
+                    // foto en grande en su lugar (antes no había forma de
+                    // verla más grande que 180×180, ni con la foto real
+                    // escaneada de la carta).
+                    onPress={() => (artwork ? setViewerVisible(true) : undefined)}
                     style={{
                       backgroundColor: info.color + '22',
                       borderRadius: radius.lg,
@@ -200,6 +207,12 @@ export default function CardDetailScreen({ route, navigation }: Props) {
           </ScrollView>
         ) : null}
       </QueryState>
+
+      <ImageViewerModal
+        visible={viewerVisible}
+        imageUri={cardQuery.data ? cardQuery.data.imageUrl ?? cardQuery.data.pokemon.spriteUrl : null}
+        onClose={() => setViewerVisible(false)}
+      />
 
       <CelebrationModal
         visible={!!celebration}
