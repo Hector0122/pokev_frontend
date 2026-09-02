@@ -1,4 +1,6 @@
-# PokeV 🃏
+<p align="center"><img src=".github/logo/pokev-icon.png" width="72" alt="PokeV" /></p>
+
+# PokeV
 
 App móvil personal para llevar el álbum de cartas Pokémon de mi hijo y mío — un álbum digital que celebra lo que ya tenemos.
 
