@@ -340,7 +340,9 @@ export default function SearchScreen() {
         visible={viewerVisible}
         imageUri={selectedDetail?.image ? cardImageUrl(selectedDetail.image, 'high', 'png') : null}
         onClose={() => setViewerVisible(false)}
-        holo={!!(selectedDetail?.variants?.holo || selectedDetail?.variants?.reverse)}
+        rarity={selectedDetail?.rarity}
+        holoVariant={selectedDetail?.variants?.holo}
+        reverseHolo={selectedDetail?.variants?.reverse}
       />
 
       <Modal

@@ -229,6 +229,7 @@ export default function CardDetailScreen({ route, navigation }: Props) {
         visible={viewerVisible}
         imageUri={cardQuery.data ? cardQuery.data.imageUrl ?? cardQuery.data.pokemon.spriteUrl : null}
         onClose={() => setViewerVisible(false)}
+        rarity={cardQuery.data?.rarity}
       />
 
       <CelebrationModal
