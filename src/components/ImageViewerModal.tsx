@@ -1,12 +1,30 @@
 import React, { useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import {
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 interface Props {
   visible: boolean;
   imageUri: string | null;
   onClose: () => void;
+  /** Carta con acabado holo/reverse (`variants` de TCGdex) — agrega el brillo que se mueve con el tilt. */
+  holo?: boolean;
 }
 
 /**
@@ -23,7 +41,12 @@ interface Props {
  * animar nada (RemoteViews, ver favoritesWidget.ts), pero acá corre en
  * nuestro propio proceso con Reanimated.
  */
-export default function ImageViewerModal({ visible, imageUri, onClose }: Props) {
+export default function ImageViewerModal({
+  visible,
+  imageUri,
+  onClose,
+  holo = false,
+}: Props) {
   const { width, height } = useWindowDimensions();
 
   const scale = useSharedValue(1);
@@ -66,7 +89,7 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
   }, [visible, imageUri]);
 
   const pinch = Gesture.Pinch()
-    .onUpdate((e) => {
+    .onUpdate(e => {
       scale.value = Math.max(1, Math.min(savedScale.value * e.scale, 5));
     })
     .onEnd(() => {
@@ -78,7 +101,7 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
   // — clamp a ±25° para que se sienta como "inclinar", no como "voltear"
   // (para eso ya está el tap). Al soltar, vuelve a plano con resorte.
   const pan = Gesture.Pan()
-    .onUpdate((e) => {
+    .onUpdate(e => {
       if (savedScale.value > 1) {
         translateX.value = savedTranslateX.value + e.translationX;
         translateY.value = savedTranslateY.value + e.translationY;
@@ -120,14 +143,26 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
       spin.value = withTiming(spin.value === 0 ? 180 : 0, { duration: 400 });
     });
 
-  const composed = Gesture.Simultaneous(pinch, pan, Gesture.Exclusive(doubleTap, singleTap));
+  const composed = Gesture.Simultaneous(
+    pinch,
+    pan,
+    Gesture.Exclusive(doubleTap, singleTap),
+  );
 
   const zoomStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value }],
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
   }));
 
   const tiltStyle = useAnimatedStyle(() => ({
-    transform: [{ perspective: 1000 }, { rotateX: `${tiltX.value}deg` }, { rotateY: `${tiltY.value}deg` }],
+    transform: [
+      { perspective: 1000 },
+      { rotateX: `${tiltX.value}deg` },
+      { rotateY: `${tiltY.value}deg` },
+    ],
   }));
 
   // Dos caras superpuestas (position: absolute, una encima de la otra) que
@@ -146,10 +181,34 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
     opacity: spin.value < 90 ? 0 : 1,
   }));
 
+  // Brillo holo falso — TCGdex no da textura/patrón real de foil por carta,
+  // solo el booleano `variants.holo`/`variants.reverse`. En vez de eso,
+  // 3 bandas de color translúcidas que se desplazan con el mismo tilt de
+  // arrastrar (tiltX/tiltY, ya calculado arriba) — más visible cuanto más
+  // se inclina la carta, como el brillo que sigue el gesto en la app real.
+  // Se apaga sola al mostrar el reverso (spin >= 90).
+  const holoStyle = useAnimatedStyle(() => {
+    if (!holo) return { opacity: 0 };
+    const magnitude = (Math.abs(tiltX.value) + Math.abs(tiltY.value)) / 50;
+    return {
+      opacity: spin.value < 90 ? Math.min(0.55, 0.12 + magnitude) : 0,
+      transform: [
+        { translateX: tiltY.value * 4 },
+        { translateY: tiltX.value * -4 },
+        { rotate: '-20deg' },
+      ],
+    };
+  });
+
   const imageSize = { width: width * 0.92, height: height * 0.75 };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       {/* `Modal` de RN abre su propia ventana nativa — el `GestureHandlerRootView`
           de App.tsx no la alcanza, así que sin este segundo acá los gestos
           (tap simple para voltear, sobre todo) no se reconocían bien: el
@@ -168,7 +227,7 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
         <GestureDetector gesture={composed}>
           <Animated.View style={[styles.centered, zoomStyle]}>
             {imageUri ? (
-              <Animated.View style={[imageSize, tiltStyle]}>
+              <Animated.View style={[imageSize, tiltStyle, styles.cardClip]}>
                 <Animated.Image
                   source={{ uri: imageUri }}
                   style={[styles.face, frontStyle]}
@@ -179,6 +238,31 @@ export default function ImageViewerModal({ visible, imageUri, onClose }: Props) 
                   style={[styles.face, styles.backFace, backStyle]}
                   resizeMode="contain"
                 />
+                {holo ? (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[styles.holoOverlay, holoStyle]}
+                  >
+                    <View
+                      style={[
+                        styles.holoBand,
+                        { backgroundColor: '#7CFFCB', left: '5%' },
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.holoBand,
+                        { backgroundColor: '#FF7CE5', left: '40%' },
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.holoBand,
+                        { backgroundColor: '#7CD2FF', left: '75%' },
+                      ]}
+                    />
+                  </Animated.View>
+                ) : null}
               </Animated.View>
             ) : (
               <View style={imageSize} />
@@ -208,4 +292,13 @@ const styles = StyleSheet.create({
   closeIcon: { color: '#FFFFFF', fontSize: 22 },
   face: { width: '100%', height: '100%', backfaceVisibility: 'hidden' },
   backFace: { position: 'absolute', top: 0, left: 0 },
+  cardClip: { overflow: 'hidden', borderRadius: 12 },
+  holoOverlay: {
+    position: 'absolute',
+    width: '160%',
+    height: '160%',
+    left: '-30%',
+    top: '-30%',
+  },
+  holoBand: { position: 'absolute', top: 0, bottom: 0, width: '20%' },
 });

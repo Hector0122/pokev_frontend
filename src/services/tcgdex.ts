@@ -33,6 +33,14 @@ export interface TcgCardDetail extends TcgCardSummary {
   rarity?: string;
   illustrator?: string;
   set: TcgSet;
+  /** Acabados de impresión existentes de esta carta puntual (no cartas distintas). */
+  variants?: {
+    normal: boolean;
+    reverse: boolean;
+    holo: boolean;
+    firstEdition: boolean;
+    wPromo: boolean;
+  };
 }
 
 /** Arma la URL final de una imagen de carta/set — la API la da sin extensión ni calidad. */
