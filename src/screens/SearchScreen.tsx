@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  SectionList,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
@@ -27,6 +37,15 @@ interface SetGroup {
   cards: TcgCardSummary[];
 }
 
+/** Parte un array en filas de `size` — así la grilla de cartas se puede virtualizar con SectionList. */
+function chunk<T>(items: T[], size: number): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size));
+  return rows;
+}
+
+const CARD_TILE_WIDTH = 104;
+
 /**
  * Buscador de cartas (§7) — buscar un Pokémon y ver TODAS las cartas
  * disponibles de ese Pokémon, las tengamos o no ("esto permite descubrir
@@ -37,6 +56,7 @@ export default function SearchScreen() {
   const { colors, spacing, radius, type, fontFamily } = useTheme();
   const navigation = useNavigation<MainTabNavigationProp<'Buscador'>>();
   const ownedCardsQuery = useCards();
+  const { width: windowWidth } = useWindowDimensions();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<TcgCardSummary[]>([]);
@@ -51,6 +71,7 @@ export default function SearchScreen() {
 
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
   const [setPickerOpen, setSetPickerOpen] = useState(false);
+  const [setPickerQuery, setSetPickerQuery] = useState('');
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -105,6 +126,20 @@ export default function SearchScreen() {
     }));
   }, [results, setsMap]);
 
+  // Cuántas tiles entran por fila según el ancho real de pantalla — así la
+  // grilla se puede virtualizar con SectionList (renderiza filas, no cartas
+  // sueltas) sin perder el layout responsive que tenía el flexWrap anterior.
+  const numColumns = useMemo(() => {
+    const usableWidth = windowWidth - spacing.lg * 2;
+    const columns = Math.floor((usableWidth + spacing.sm) / (CARD_TILE_WIDTH + spacing.sm));
+    return Math.max(columns, 2);
+  }, [windowWidth, spacing.lg, spacing.sm]);
+
+  const sections = useMemo(
+    () => groups.map((group) => ({ key: group.setId, title: group.setName, data: chunk(group.cards, numColumns) })),
+    [groups, numColumns],
+  );
+
   // Heurística "ya la tenés": mismo Pokémon + mismo número de carta. La
   // expansión no entra en el match porque `setName` en la colección es
   // texto libre que carga el usuario (CardFieldsForm), no un id de TCGdex.
@@ -139,6 +174,11 @@ export default function SearchScreen() {
     () => Array.from(setsMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
     [setsMap],
   );
+  const filteredSetsList = useMemo(() => {
+    const normalizedQuery = normalizeForSearch(setPickerQuery.trim());
+    if (!normalizedQuery) return setsList;
+    return setsList.filter((set) => normalizeForSearch(set.name).includes(normalizedQuery));
+  }, [setsList, setPickerQuery]);
   const selectedSetName = selectedSetId ? setsMap.get(selectedSetId)?.name ?? selectedSetId : 'Todas las expansiones';
   const hasSearch = query.trim().length >= 2 || !!selectedSetId;
 
@@ -174,7 +214,10 @@ export default function SearchScreen() {
           autoFocus
         />
         <Pressable
-          onPress={() => setSetPickerOpen(true)}
+          onPress={() => {
+            setSetPickerQuery('');
+            setSetPickerOpen(true);
+          }}
           style={[
             styles.setPickerTrigger,
             {
@@ -208,90 +251,36 @@ export default function SearchScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView
+        <SectionList
           style={styles.flex1}
+          sections={sections}
+          keyExtractor={(row, index) => row[0]?.id ?? `row-${index}`}
+          stickySectionHeadersEnabled={false}
           contentContainerStyle={[
             styles.scrollContent,
-            groups.length === 0 ? styles.justifyCenter : styles.justifyStart,
-            { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.huge },
+            sections.length === 0 ? styles.justifyCenter : styles.justifyStart,
+            { padding: spacing.lg, paddingBottom: spacing.huge },
           ]}
-        >
-          {groups.map((group) => (
-            <View key={group.setId} style={{ gap: spacing.sm }}>
-              <Text style={{ ...type.h2, color: colors.text }}>{group.setName}</Text>
-              <View style={[styles.setRow, { gap: spacing.sm }]}>
-                {group.cards.map((card) => {
-                  const owned = isOwned(card);
-                  return (
-                    <Pressable
-                      key={card.id}
-                      onPress={() => openCard(card)}
-                      style={[
-                        styles.cardTile,
-                        {
-                          borderRadius: radius.md,
-                          backgroundColor: colors.cardBg,
-                          borderColor: colors.border,
-                          padding: spacing.xs,
-                          gap: spacing.xxs,
-                        },
-                      ]}
-                    >
-                      <View style={styles.relative}>
-                        {card.image ? (
-                          <Image
-                            source={{ uri: cardImageUrl(card.image, 'low', 'webp') }}
-                            style={[styles.cardImage, { borderRadius: radius.sm }]}
-                            resizeMode="contain"
-                          />
-                        ) : (
-                          <View
-                            style={[
-                              styles.cardImage,
-                              styles.centerBoth,
-                              { borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
-                            ]}
-                          >
-                            <AppIcon name="pokebola" size={40} />
-                          </View>
-                        )}
-                        {owned ? (
-                          <View
-                            style={[
-                              styles.ownedBadge,
-                              styles.centerBoth,
-                              {
-                                top: spacing.xxs,
-                                right: spacing.xxs,
-                                borderRadius: radius.pill,
-                                backgroundColor: colors.primary,
-                              },
-                            ]}
-                          >
-                            <Text style={styles.ownedBadgeCheck}>✓</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <Text numberOfLines={1} style={[styles.bold, { ...type.caption, color: colors.text }]}>
-                        {card.name}
-                      </Text>
-                      <Text style={{ ...type.caption, color: colors.textSecondary }}>#{card.localId}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+          renderSectionHeader={({ section }) => (
+            <Text style={{ ...type.h2, color: colors.text, marginBottom: spacing.sm }}>{section.title}</Text>
+          )}
+          renderItem={({ item: row }) => (
+            <View style={[styles.setRow, { gap: spacing.sm, marginBottom: spacing.sm }]}>
+              {row.map((card) => (
+                <SearchCardTile key={card.id} card={card} owned={isOwned(card)} onPress={() => openCard(card)} />
+              ))}
             </View>
-          ))}
-
-          {!hasSearch ? (
+          )}
+          ListFooterComponent={<View style={{ height: spacing.lg }} />}
+          ListEmptyComponent={
             <View style={[styles.centered, { gap: spacing.sm }]}>
               <AppIcon name="ditto" size={96} />
               <Text style={[styles.textCenter, { ...type.body, color: colors.textSecondary }]}>
                 Escribí el nombre de un Pokémon o elegí una expansión para ver sus cartas.
               </Text>
             </View>
-          ) : null}
-        </ScrollView>
+          }
+        />
       )}
 
       <Modal visible={!!selectedId} transparent animationType="fade" onRequestClose={closeDetail}>
@@ -361,18 +350,28 @@ export default function SearchScreen() {
             ]}
           >
             <Text style={{ ...type.h1, color: colors.text, marginBottom: spacing.sm }}>Expansión</Text>
+            <TextField
+              label="Buscar expansión"
+              value={setPickerQuery}
+              onChangeText={setSetPickerQuery}
+              placeholder="Ej. Heroes Ascendentes"
+              autoFocus
+              style={{ marginBottom: spacing.sm }}
+            />
             <FlatList
-              data={setsList}
+              data={filteredSetsList}
               keyExtractor={(set) => set.id}
               ListHeaderComponent={
-                <SetPickerRow
-                  name="Todas las expansiones"
-                  selected={!selectedSetId}
-                  onPress={() => {
-                    setSelectedSetId(null);
-                    setSetPickerOpen(false);
-                  }}
-                />
+                setPickerQuery.trim() ? null : (
+                  <SetPickerRow
+                    name="Todas las expansiones"
+                    selected={!selectedSetId}
+                    onPress={() => {
+                      setSelectedSetId(null);
+                      setSetPickerOpen(false);
+                    }}
+                  />
+                )
               }
               renderItem={({ item }) => (
                 <SetPickerRow
@@ -390,6 +389,65 @@ export default function SearchScreen() {
         </Pressable>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+function SearchCardTile({ card, owned, onPress }: { card: TcgCardSummary; owned: boolean; onPress: () => void }) {
+  const { colors, spacing, radius, type } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.cardTile,
+        {
+          borderRadius: radius.md,
+          backgroundColor: colors.cardBg,
+          borderColor: colors.border,
+          padding: spacing.xs,
+          gap: spacing.xxs,
+        },
+      ]}
+    >
+      <View style={styles.relative}>
+        {card.image ? (
+          <Image
+            source={{ uri: cardImageUrl(card.image, 'low', 'webp') }}
+            style={[styles.cardImage, { borderRadius: radius.sm }]}
+            resizeMode="contain"
+          />
+        ) : (
+          <View
+            style={[
+              styles.cardImage,
+              styles.centerBoth,
+              { borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+            ]}
+          >
+            <AppIcon name="pokebola" size={40} />
+          </View>
+        )}
+        {owned ? (
+          <View
+            style={[
+              styles.ownedBadge,
+              styles.centerBoth,
+              {
+                top: spacing.xxs,
+                right: spacing.xxs,
+                borderRadius: radius.pill,
+                backgroundColor: colors.primary,
+              },
+            ]}
+          >
+            <Text style={styles.ownedBadgeCheck}>✓</Text>
+          </View>
+        ) : null}
+      </View>
+      <Text numberOfLines={1} style={[styles.bold, { ...type.caption, color: colors.text }]}>
+        {card.name}
+      </Text>
+      <Text style={{ ...type.caption, color: colors.textSecondary }}>#{card.localId}</Text>
+    </Pressable>
   );
 }
 
@@ -439,8 +497,8 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
   justifyCenter: { justifyContent: 'center' },
   justifyStart: { justifyContent: 'flex-start' },
-  setRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  cardTile: { width: 104, borderWidth: 1 },
+  setRow: { flexDirection: 'row' },
+  cardTile: { width: CARD_TILE_WIDTH, borderWidth: 1 },
   relative: { position: 'relative' },
   cardImage: { width: '100%', height: 130 },
   ownedBadge: { position: 'absolute', width: 24, height: 24 },

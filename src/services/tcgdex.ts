@@ -52,8 +52,12 @@ export interface SearchCardsParams {
  * dos debe venir — sin ninguno se devuelve `[]` en vez de traer el catálogo
  * completo. El filtro de set usa el prefijo `eq:` porque TCGdex matchea por
  * defecto substring ("swsh1" también matchea "swsh11", "swsh12", etc.).
+ *
+ * `limit` default cubre la expansión más grande del catálogo (Secret Rares
+ * incluidas, ~300 cartas) — antes estaba en 60 y cortaba sets grandes
+ * (p.ej. Heroes Ascendentes, 295 cartas) sin avisar.
  */
-export async function searchCards({ name, setId }: SearchCardsParams, limit = 60): Promise<TcgCardSummary[]> {
+export async function searchCards({ name, setId }: SearchCardsParams, limit = 500): Promise<TcgCardSummary[]> {
   const trimmedName = name?.trim();
   if (!trimmedName && !setId) return [];
 
