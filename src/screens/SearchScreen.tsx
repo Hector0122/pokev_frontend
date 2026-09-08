@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
@@ -49,6 +49,9 @@ export default function SearchScreen() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 
+  const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
+  const [setPickerOpen, setSetPickerOpen] = useState(false);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function SearchScreen() {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const trimmed = query.trim();
-    if (trimmed.length < 2) {
+    if (trimmed.length < 2 && !selectedSetId) {
       setResults([]);
       setSearchError(null);
       return;
@@ -71,7 +74,10 @@ export default function SearchScreen() {
       setIsSearching(true);
       setSearchError(null);
       try {
-        const found = await searchCards(trimmed);
+        const found = await searchCards({
+          name: trimmed.length >= 2 ? trimmed : undefined,
+          setId: selectedSetId ?? undefined,
+        });
         setResults(found);
       } catch {
         setSearchError('No pudimos buscar cartas. Revisá tu conexión.');
@@ -82,7 +88,7 @@ export default function SearchScreen() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query]);
+  }, [query, selectedSetId]);
 
   const groups = useMemo<SetGroup[]>(() => {
     const bySet = new Map<string, TcgCardSummary[]>();
@@ -129,6 +135,13 @@ export default function SearchScreen() {
     }
   }
 
+  const setsList = useMemo(
+    () => Array.from(setsMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+    [setsMap],
+  );
+  const selectedSetName = selectedSetId ? setsMap.get(selectedSetId)?.name ?? selectedSetId : 'Todas las expansiones';
+  const hasSearch = query.trim().length >= 2 || !!selectedSetId;
+
   function closeDetail() {
     setSelectedId(null);
     setSelectedDetail(null);
@@ -160,6 +173,20 @@ export default function SearchScreen() {
           placeholder="Ej. Pikachu"
           autoFocus
         />
+        <Pressable
+          onPress={() => setSetPickerOpen(true)}
+          style={[
+            styles.setPickerTrigger,
+            {
+              borderRadius: radius.sm,
+              backgroundColor: colors.inputBg,
+              borderColor: colors.border,
+              paddingHorizontal: spacing.sm,
+            },
+          ]}
+        >
+          <Text style={{ ...type.body, color: colors.text }}>{selectedSetName}</Text>
+        </Pressable>
       </View>
 
       {isSearching ? (
@@ -171,11 +198,13 @@ export default function SearchScreen() {
         <Text style={{ ...type.bodySm, color: colors.danger, paddingHorizontal: spacing.lg }}>{searchError}</Text>
       ) : null}
 
-      {!isSearching && query.trim().length >= 2 && results.length === 0 && !searchError ? (
+      {!isSearching && hasSearch && results.length === 0 && !searchError ? (
         <View style={[styles.emptyState, { padding: spacing.xxl, gap: spacing.sm }]}>
           <AppIcon name="psyduck" size={72} />
           <Text style={[styles.textCenter, { ...type.h1, color: colors.text }]}>
-            No encontramos cartas de "{query.trim()}"
+            {query.trim().length >= 2
+              ? `No encontramos cartas de "${query.trim()}"`
+              : `No encontramos cartas de ${selectedSetName}`}
           </Text>
         </View>
       ) : (
@@ -254,11 +283,11 @@ export default function SearchScreen() {
             </View>
           ))}
 
-          {query.trim().length < 2 ? (
+          {!hasSearch ? (
             <View style={[styles.centered, { gap: spacing.sm }]}>
               <AppIcon name="ditto" size={96} />
               <Text style={[styles.textCenter, { ...type.body, color: colors.textSecondary }]}>
-                Escribí el nombre de un Pokémon para ver todas sus cartas.
+                Escribí el nombre de un Pokémon o elegí una expansión para ver sus cartas.
               </Text>
             </View>
           ) : null}
@@ -313,7 +342,91 @@ export default function SearchScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal
+        visible={setPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSetPickerOpen(false)}
+      >
+        <Pressable
+          onPress={() => setSetPickerOpen(false)}
+          style={[styles.emptyState, { backgroundColor: colors.overlay, padding: spacing.xl }]}
+        >
+          <Pressable
+            onPress={() => {}}
+            style={[
+              styles.setPickerModal,
+              { backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.lg },
+            ]}
+          >
+            <Text style={{ ...type.h1, color: colors.text, marginBottom: spacing.sm }}>Expansión</Text>
+            <FlatList
+              data={setsList}
+              keyExtractor={(set) => set.id}
+              ListHeaderComponent={
+                <SetPickerRow
+                  name="Todas las expansiones"
+                  selected={!selectedSetId}
+                  onPress={() => {
+                    setSelectedSetId(null);
+                    setSetPickerOpen(false);
+                  }}
+                />
+              }
+              renderItem={({ item }) => (
+                <SetPickerRow
+                  name={item.name}
+                  logo={item.logo}
+                  selected={selectedSetId === item.id}
+                  onPress={() => {
+                    setSelectedSetId(item.id);
+                    setSetPickerOpen(false);
+                  }}
+                />
+              )}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
+  );
+}
+
+function SetPickerRow({
+  name,
+  logo,
+  selected,
+  onPress,
+}: {
+  name: string;
+  logo?: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { colors, spacing, radius, type } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.setPickerRow,
+        {
+          gap: spacing.sm,
+          paddingVertical: spacing.sm,
+          borderRadius: radius.sm,
+          backgroundColor: selected ? colors.surfaceAlt : 'transparent',
+          paddingHorizontal: spacing.sm,
+        },
+      ]}
+    >
+      {logo ? (
+        <Image source={{ uri: `${logo}.png` }} style={styles.setPickerLogo} resizeMode="contain" />
+      ) : (
+        <View style={styles.setPickerLogo} />
+      )}
+      <Text style={{ ...type.body, color: colors.text, flexShrink: 1 }}>{name}</Text>
+      {selected ? <Text style={{ color: colors.primary }}>✓</Text> : null}
+    </Pressable>
   );
 }
 
@@ -336,4 +449,8 @@ const styles = StyleSheet.create({
   modalCard: { alignItems: 'center', maxWidth: 360, width: '100%' },
   detailImage: { width: 220, height: 300 },
   stretchTop: { alignSelf: 'stretch' },
+  setPickerTrigger: { borderWidth: 1, paddingVertical: 10 },
+  setPickerModal: { maxWidth: 420, width: '100%', maxHeight: '70%' },
+  setPickerRow: { flexDirection: 'row', alignItems: 'center' },
+  setPickerLogo: { width: 32, height: 22 },
 });

@@ -40,14 +40,30 @@ export function cardImageUrl(base: string, quality: 'low' | 'high' = 'low', ext:
   return `${base}/${quality}.${ext}`;
 }
 
-/** Todas las cartas cuyo nombre matchea la búsqueda — la propia API hace el filtro (case-insensitive, parcial). */
-export async function searchCards(query: string, limit = 60): Promise<TcgCardSummary[]> {
-  const trimmed = query.trim();
-  if (!trimmed) return [];
+export interface SearchCardsParams {
+  /** Nombre a buscar — la propia API hace el filtro (case-insensitive, parcial). */
+  name?: string;
+  /** Id de expansión a la que restringir la búsqueda (p.ej. "swsh1"). */
+  setId?: string;
+}
 
-  const response = await fetch(`${BASE_URL}/cards?name=${encodeURIComponent(trimmed)}`);
+/**
+ * Cartas que matchean `name` y/o pertenecen a `setId`. Al menos uno de los
+ * dos debe venir — sin ninguno se devuelve `[]` en vez de traer el catálogo
+ * completo. El filtro de set usa el prefijo `eq:` porque TCGdex matchea por
+ * defecto substring ("swsh1" también matchea "swsh11", "swsh12", etc.).
+ */
+export async function searchCards({ name, setId }: SearchCardsParams, limit = 60): Promise<TcgCardSummary[]> {
+  const trimmedName = name?.trim();
+  if (!trimmedName && !setId) return [];
+
+  const params = new URLSearchParams();
+  if (trimmedName) params.set('name', trimmedName);
+  if (setId) params.set('set.id', `eq:${setId}`);
+
+  const response = await fetch(`${BASE_URL}/cards?${params.toString()}`);
   if (!response.ok) {
-    throw new Error(`TCGdex respondió ${response.status} al buscar "${trimmed}"`);
+    throw new Error(`TCGdex respondió ${response.status} al buscar cartas`);
   }
   const results = (await response.json()) as TcgCardSummary[];
   return results.slice(0, limit);
