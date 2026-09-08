@@ -26,6 +26,7 @@ import {
   type TcgSet,
 } from '../services/tcgdex';
 import AppIcon from '../components/AppIcon';
+import ImageViewerModal from '../components/ImageViewerModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
 import TextField from '../components/TextField';
@@ -68,6 +69,7 @@ export default function SearchScreen() {
   const [selectedDetail, setSelectedDetail] = useState<TcgCardDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [viewerVisible, setViewerVisible] = useState(false);
 
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
   const [setPickerOpen, setSetPickerOpen] = useState(false);
@@ -305,11 +307,13 @@ export default function SearchScreen() {
             {selectedDetail ? (
               <>
                 {selectedDetail.image ? (
-                  <Image
-                    source={{ uri: cardImageUrl(selectedDetail.image, 'high', 'png') }}
-                    style={styles.detailImage}
-                    resizeMode="contain"
-                  />
+                  <Pressable onPress={() => setViewerVisible(true)}>
+                    <Image
+                      source={{ uri: cardImageUrl(selectedDetail.image, 'high', 'png') }}
+                      style={styles.detailImage}
+                      resizeMode="contain"
+                    />
+                  </Pressable>
                 ) : null}
                 <Text style={[styles.textCenter, { ...type.h1, color: colors.text }]}>{selectedDetail.name}</Text>
                 <Text style={[styles.textCenter, { ...type.bodySm, color: colors.textSecondary }]}>
@@ -331,6 +335,12 @@ export default function SearchScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <ImageViewerModal
+        visible={viewerVisible}
+        imageUri={selectedDetail?.image ? cardImageUrl(selectedDetail.image, 'high', 'png') : null}
+        onClose={() => setViewerVisible(false)}
+      />
 
       <Modal
         visible={setPickerOpen}
