@@ -6,6 +6,10 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type BlendMode,
+  type FilterFunction,
+  type LinearGradientValue,
+  type RadialGradientValue,
 } from 'react-native';
 import {
   Gesture,
@@ -22,59 +26,222 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-// Cuatro variantes según la rareza real de la carta (getHoloKind), cada una
-// con su propia mecánica de animación — no solo un recolor de la misma, que
-// es lo que había antes y se sentía repetido:
-//   - classic ("Holo Rara"): streak diagonal sólido, dorado, 2 bandas anchas.
-//   - fullart ("Ultra Rara"/"Rara Ilustración"): el arte completo lleva
-//     textura holográfica, no un brillo puntual — resplandor radial (como
-//     reflejo en una superficie curva) en vez de una franja.
-//   - reverse (`variants.reverse`): patrón de malla cruzada (dos grupos de
-//     bandas en diagonales opuestas), cian/violeta — se siente a "rejilla",
-//     no a streak, como el print reverse real.
-//   - rainbow (Secreta/Híper/Ilustración Especial): streak arcoíris vívido
-//     de 6 colores, el escalón más alto.
+// Brillo holo calcado de la técnica REAL de la demo de referencia
+// (simeydotme/pokemon-cards-css — leída en vivo, no copiada: es GPLv3, no se
+// pueden usar sus imágenes/código, pero la RECETA (qué capas, qué
+// blend-modes, qué filtros) no es un asset, así que sí se puede reproducir
+// con piezas propias). Su `.card__shine` real (ver public/css/cards/base.css
+// y regular-holo.css del repo) NO es una foto de foil: son 2-3 capas de puro
+// `background-image` (gradientes) con `mix-blend-mode` Y ADEMÁS
+// `filter: brightness() contrast() saturate()` en cada capa — ese `filter`
+// es lo que nos faltaba antes (solo usábamos blend-mode) y por lo que se
+// veía "lavado" en vez de metálico. RN soporta las tres cosas (`filter`,
+// `mixBlendMode`, `experimental_backgroundImage`) desde 0.76+ en New
+// Architecture, Android 10+ (ya prendida en este proyecto).
+//
+// 3 capas por variante, mismo rol en las 3:
+//   1. "main"  — el streak/arcoíris de color, mix-blend-mode color-dodge.
+//   2. "grain" — rayas finas tipo scanline (su equivalente de la textura),
+//                mix-blend-mode hard-light — reemplaza la imagen de foil que
+//                probamos antes (no tileaba bien en Android de todos modos).
+//   3. "glare" — resplandor radial que seguía el mouse en la demo; acá sigue
+//                el tilt en su lugar, mix-blend-mode overlay.
+//
+// `fullart` (Ultra Rara/Rara Ilustración) se había sacado por un corte
+// rectangular de Android al inclinar la carta (bug de plataforma,
+// facebook/react-native#55605 — mixBlendMode + ancestro con rotateX/rotateY).
+// Volvió porque ahora el holo entero vive fuera del árbol que rota en 3D
+// (solo se mueve con `translate`, ver *PanStyle más abajo) — el bug era
+// específicamente rotateX/rotateY + mixBlendMode, no translate + mixBlendMode.
+type HoloLayer = {
+  gradient: LinearGradientValue | RadialGradientValue;
+  blendMode: BlendMode;
+  filter: FilterFunction[];
+};
 type HoloPreset = {
-  mechanic: 'sheen' | 'crosshatch' | 'radial';
-  colors: string[];
-  bandWidth?: number; // solo mechanic 'sheen'/'crosshatch'
+  layers: [main: HoloLayer, grain: HoloLayer, glare: HoloLayer];
+  colors: string[]; // paleta para los destellos puntuales (Sparkle)
   baseOpacity: number;
   maxOpacity: number;
 };
 
+/** Gradiente repetido varias veces (equivalente a `repeating-linear-gradient`, que RN no tiene como tipo aparte) — el streak de color principal. */
+function repeatingLinear(colors: string[], direction: string, repeats = 6): LinearGradientValue {
+  const seq = Array.from({ length: repeats }, () => colors).flat();
+  const colorStops = seq.map((color, i) => ({
+    color,
+    positions: [`${(i / (seq.length - 1)) * 100}%`],
+  }));
+  return { type: 'linear-gradient', direction, colorStops };
+}
+
+/** Rayas finas alternadas — el "grano" de la referencia (ahí es una textura real; acá, gradiente puro para no depender de una imagen que además no tileaba bien en Android). */
+function scanlines(direction: string, bands = 30): LinearGradientValue {
+  const colorStops: { color: string; positions: string[] }[] = [];
+  for (let i = 0; i < bands; i++) {
+    const start = (i / bands) * 100;
+    const mid = ((i + 0.5) / bands) * 100;
+    const color = i % 2 === 0 ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.4)';
+    colorStops.push({ color, positions: [`${start}%`] }, { color, positions: [`${mid}%`] });
+  }
+  return { type: 'linear-gradient', direction, colorStops };
+}
+
+/** Resplandor radial — el "glare" que en la demo sigue el mouse; acá lo desplaza el tilt (ver glarePanStyle). Mismo para las 3 variantes. */
+function glareRadial(): RadialGradientValue {
+  return {
+    type: 'radial-gradient',
+    shape: 'circle',
+    size: 'farthest-corner',
+    position: { top: '50%', left: '50%' },
+    colorStops: [
+      { color: 'rgba(255,255,255,0.85)', positions: ['0%'] },
+      { color: 'rgba(255,255,255,0.35)', positions: ['30%'] },
+      { color: 'rgba(0,0,0,0.4)', positions: ['100%'] },
+    ],
+  };
+}
+
+/** Ondas concéntricas blanco-negro-blanco — el patrón "sin máscara" de reverse-holo.css cuando no hay foto de foil por carta (nuestro caso siempre). */
+function rippleRadial(): RadialGradientValue {
+  return {
+    type: 'radial-gradient',
+    shape: 'circle',
+    size: 'farthest-side',
+    position: { top: '50%', left: '50%' },
+    colorStops: [
+      { color: '#FFFFFF', positions: ['5%'] },
+      { color: '#000000', positions: ['50%'] },
+      { color: '#FFFFFF', positions: ['80%'] },
+    ],
+  };
+}
+
+/** Banda diagonal negro-blanco-negro — la segunda mitad del patrón "sin máscara" de reverse-holo.css. */
+function diagonalBand(): LinearGradientValue {
+  return {
+    type: 'linear-gradient',
+    direction: '-45deg',
+    colorStops: [
+      { color: '#000000', positions: ['15%'] },
+      { color: '#FFFFFF', positions: ['50%'] },
+      { color: '#000000', positions: ['85%'] },
+    ],
+  };
+}
+
+// Paletas: "sunpillar" para classic es la misma que usa regular-holo.css
+// (6 tonos pastel, --sunpillar-1..6 de base.css). rainbow usa tonos más
+// oscuros/saturados, como rainbow-holo.css (--r-clr-1..7), para que se note
+// la diferencia de "un escalón más" con classic.
+const SUNPILLARS = ['#FF6B61', '#FFE066', '#A6FF61', '#61FFEC', '#7A9DFF', '#C87AFF'];
+const RAINBOW_DEEP = ['#8C2F2F', '#8C7A2F', '#3F8C2F', '#2F8C86', '#2F5A8C', '#5A2F8C', '#8C2F6E'];
+
 const HOLO_PRESETS: Record<'classic' | 'fullart' | 'reverse' | 'rainbow', HoloPreset> = {
   classic: {
-    mechanic: 'sheen',
-    colors: ['#FFB300', '#FFD54F'],
-    bandWidth: 22,
+    layers: [
+      {
+        gradient: repeatingLinear(SUNPILLARS, '110deg'),
+        blendMode: 'color-dodge',
+        filter: [{ brightness: 1.05 }, { contrast: 1.1 }, { saturate: 1.05 }],
+      },
+      {
+        gradient: scanlines('100deg'),
+        blendMode: 'hard-light',
+        filter: [{ brightness: 1.15 }, { contrast: 1.1 }],
+      },
+      {
+        gradient: glareRadial(),
+        blendMode: 'overlay',
+        filter: [{ brightness: 0.8 }, { contrast: 1.5 }],
+      },
+    ],
+    colors: SUNPILLARS,
+    // `color-dodge` es un blend-mode muy potente: incluso poca opacidad
+    // explota a blanco puro sobre cualquier zona clara de la foto (el borde
+    // de cartón, sobre todo). 0.35 base se veía como bandas de color sólidas
+    // tapando toda la carta — bajado a una fracción de eso.
     baseOpacity: 0.12,
-    maxOpacity: 0.40,
-  },
-  fullart: {
-    mechanic: 'radial',
-    colors: ['#FFFFFF', '#CFFFF3', '#CFE8FF'],
-    baseOpacity: 0.14,
-    maxOpacity: 0.50,
+    maxOpacity: 0.32,
   },
   reverse: {
-    mechanic: 'crosshatch',
-    colors: ['#00BCD4', '#7C4DFF', '#00E5A8'],
-    baseOpacity: 0.14,
-    maxOpacity: 0.50,
+    layers: [
+      {
+        gradient: rippleRadial(),
+        blendMode: 'color-dodge',
+        filter: [{ brightness: 0.6 }, { contrast: 1.5 }],
+      },
+      {
+        gradient: diagonalBand(),
+        blendMode: 'color-dodge',
+        filter: [{ brightness: 0.6 }, { contrast: 1.5 }],
+      },
+      {
+        gradient: glareRadial(),
+        blendMode: 'overlay',
+        filter: [{ brightness: 0.7 }, { contrast: 1.5 }],
+      },
+    ],
+    colors: ['#00E5FF', '#7C4DFF', '#00E5A8'],
+    baseOpacity: 0.12,
+    maxOpacity: 0.32,
   },
   rainbow: {
-    mechanic: 'sheen',
+    layers: [
+      {
+        gradient: repeatingLinear(RAINBOW_DEEP, '-30deg'),
+        blendMode: 'color-dodge',
+        filter: [{ brightness: 0.85 }, { contrast: 2.2 }, { saturate: 0.85 }],
+      },
+      {
+        gradient: repeatingLinear([...RAINBOW_DEEP].reverse(), '-60deg'),
+        blendMode: 'color-dodge',
+        filter: [{ brightness: 0.75 }, { contrast: 2 }, { saturate: 1 }],
+      },
+      {
+        gradient: glareRadial(),
+        blendMode: 'hard-light',
+        filter: [{ brightness: 0.9 }, { contrast: 1.75 }],
+      },
+    ],
     colors: ['#B18CFF', '#6BD6FF', '#8BFF8B', '#FFF34D', '#FFB86B', '#FF6B6B'],
-    bandWidth: 18,
-    baseOpacity: 0.12,
-    maxOpacity: 0.55,
+    baseOpacity: 0.14,
+    maxOpacity: 0.36,
+  },
+  // Vuelve la variante que se había sacado (ver v-full-art.css del repo de
+  // referencia: bandas verticales + banda metálica angulada + oscurecido en
+  // las esquinas) — se sacó porque el corte rectangular de Android al
+  // inclinar se notaba más ahí. Ahora el holo entero va sin ninguna rotación
+  // (solo translate, ver *PanStyle), así que ya no debería aplicar el mismo
+  // bug (era rotateX/rotateY + mixBlendMode, no translate + mixBlendMode).
+  fullart: {
+    layers: [
+      {
+        gradient: repeatingLinear(SUNPILLARS, '0deg', 6),
+        blendMode: 'color-dodge',
+        filter: [{ brightness: 1.05 }, { contrast: 1.2 }, { saturate: 1.15 }],
+      },
+      {
+        gradient: scanlines('133deg', 20),
+        blendMode: 'hard-light',
+        filter: [{ brightness: 1.1 }, { contrast: 1.2 }],
+      },
+      {
+        gradient: glareRadial(),
+        blendMode: 'hard-light',
+        filter: [{ brightness: 1 }, { contrast: 1.2 }, { saturate: 1 }],
+      },
+    ],
+    colors: SUNPILLARS,
+    baseOpacity: 0.14,
+    maxOpacity: 0.34,
   },
 };
 type HoloKind = 'none' | keyof typeof HOLO_PRESETS;
 const HOLO_KINDS: (keyof typeof HOLO_PRESETS)[] = ['classic', 'fullart', 'reverse', 'rainbow'];
 const HOLO_CHOICE_LABELS: Record<HoloKind | 'auto', string> = {
   auto: '✨ Auto',
-  none: '— Ninguno',
+  none: '—',
   classic: '🟡',
   fullart: '⚪',
   reverse: '🔷',
@@ -86,10 +253,10 @@ const HOLO_CHOICE_LABELS: Record<HoloKind | 'auto', string> = {
 // carta tiene foil: hay Promos con `variants.holo: true` cuya rareza es solo
 // "Promo" (p.ej. Pikachu V SWSH145, dorada por el sello de 25º Aniversario).
 // La señal real de si brilla es `variants.holo`/`variants.reverse` — la
-// rareza solo decide, entre las que sí tienen holo, cuál de los 4 looks.
-// Verificado contra la API real (no solo supuesto): "Ultra Rara" y "Rara
-// Ilustración" SÍ llevan holo=true (fullart), igual que "Rara Ilustración
-// Especial" y "Rara Híper" (rainbow, el escalón más alto).
+// rareza solo decide, entre las que sí tienen holo, cuál look usar.
+// Verificado contra la API real: "Ultra Rara" y "Rara Ilustración" SÍ llevan
+// holo=true (fullart), igual que "Rara Ilustración Especial" y "Rara Híper"
+// (rainbow, el escalón más alto).
 const TOP_TIER_RARITY = /secret|secreta|híper|hyper|corona|variocolor|especial/;
 const FULL_ART_RARITY = /ultra|ilustraci[oó]n|radiante|estrella|shiny|vmax|vstar/;
 
@@ -121,145 +288,37 @@ function getHoloKind(
   return 'none';
 }
 
-const sheenBandOpacity = (i: number, count: number) =>
-  1 - Math.abs(i - (count - 1) / 2) / (count / 2);
-
-/** Un grupo de bandas diagonales — mechanic 'sheen' lo usa una vez a 30°, 'crosshatch' lo usa dos veces (30° y -30°) para formar una malla. */
-function BandGroup({ preset, rotateDeg }: { preset: HoloPreset; rotateDeg: number }) {
-  const bandWidth = preset.bandWidth ?? 18;
-  return (
-    <View style={[styles.sheenRotate, { transform: [{ rotate: `${rotateDeg}deg` }] }]}>
-      {preset.colors.map((color, i, { length }) => (
-        <View
-          key={i}
-          style={[
-            styles.sheenBand,
-            {
-              backgroundColor: color,
-              width: `${bandWidth}%`,
-              left: `${
-                length > 1 ? (i * (100 - bandWidth)) / (length - 1) : (100 - bandWidth) / 2
-              }%`,
-              opacity: sheenBandOpacity(i, length),
-            },
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
-
-// Cantidad de líneas por dirección en la malla — más y más finas que un
-// BandGroup normal, con opacidad pareja (no en campana): con la campana, la
-// línea del medio de cada grupo quedaba casi opaca y las dos (30°/-30°) se
-// cruzaban justo en el centro formando una "X" grande y rara en vez de una
-// textura pareja de malla. Cada línea es en realidad 3 capas superpuestas del mismo color
-// centradas en el mismo punto — un "core" fino y brillante más un halo ancho
-// y tenue detrás — para simular que está difuminada (RN no tiene blur nativo
-// sin agregar una librería nueva; este truco de capas es el equivalente barato).
-const CROSSHATCH_LINES = 7;
-const GLOW_LAYERS = [
-  { width: 12, opacity: 0.10 },
-  { width: 6, opacity: 0.20 },
-  { width: 2, opacity: 0.55 },
-] as const;
-
-function GlowBand({ centerLeft, color }: { centerLeft: number; color: string }) {
-  return (
-    <>
-      {GLOW_LAYERS.map((layer, i) => (
-        <View
-          key={i}
-          style={[
-            styles.sheenBand,
-            {
-              backgroundColor: color,
-              width: `${layer.width}%`,
-              left: `${centerLeft - layer.width / 2}%`,
-              opacity: layer.opacity,
-            },
-          ]}
-        />
-      ))}
-    </>
-  );
-}
-
-/** Una dirección de la malla cruzada (mechanic 'crosshatch') — `BandGroup` la usa dos veces (30°/-30°, desfasadas con `offset`) para que las líneas no coincidan en el mismo punto. */
-function CrosshatchLines({
-  preset,
-  rotateDeg,
-  offset,
+/** Una capa de gradiente + blend-mode + filter, dentro de una caja sobredimensionada para poder desplazarla con el tilt (`panStyle`) sin que se le vean los bordes. */
+function GradientPanLayer({
+  layer,
+  panStyle,
 }: {
-  preset: HoloPreset;
-  rotateDeg: number;
-  offset: number;
+  layer: HoloLayer;
+  panStyle: ReturnType<typeof useAnimatedStyle>;
 }) {
   return (
-    <View style={[styles.sheenRotate, { transform: [{ rotate: `${rotateDeg}deg` }] }]}>
-      {Array.from({ length: CROSSHATCH_LINES }, (_, i) => (
-        <GlowBand
-          key={i}
-          centerLeft={(offset + i * (100 / CROSSHATCH_LINES)) % 100}
-          color={preset.colors[i % preset.colors.length]}
-        />
-      ))}
-    </View>
+    <Animated.View style={[styles.panBox, panStyle]}>
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          // `experimental_backgroundImage`/`mixBlendMode`/`filter`: RN 0.76+,
+          // New Architecture, Android 10+ (ver comentario de HOLO_PRESETS).
+          {
+            experimental_backgroundImage: [layer.gradient],
+            mixBlendMode: layer.blendMode,
+            filter: layer.filter,
+          },
+        ]}
+      />
+    </Animated.View>
   );
 }
 
-// Anillos del resplandor radial: del más chico (centro, más opaco) al más
-// grande (borde, casi transparente) — así el ojo lee un glow que se apaga
-// hacia afuera. Antes iba al revés (el anillo más GRANDE era el más opaco),
-// y como ese anillo pasaba del ancho de la carta, `cardClip` lo recortaba en
-// seco — se veía un círculo grande cortado feo en vez de un brillo suave.
-// El factor más alto (0.9) queda por debajo de 1 a propósito: nunca se pasa
-// del lado más corto de la carta, así no hay nada que recortar.
-const RADIAL_RINGS = [
-  { factor: 0.9, opacity: 0.08 },
-  { factor: 0.68, opacity: 0.14 },
-  { factor: 0.48, opacity: 0.22 },
-  { factor: 0.3, opacity: 0.32 },
-  { factor: 0.15, opacity: 0.42 },
-];
-
-/** Resplandor radial (mechanic 'fullart') — anillos concéntricos que se desvanecen hacia afuera, como un reflejo en una superficie curva en vez de una franja recta. */
-function RadialGlow({ preset, size }: { preset: HoloPreset; size: number }) {
-  return (
-    <>
-      {RADIAL_RINGS.map(({ factor, opacity }, i) => {
-        const d = size * factor;
-        return (
-          <View
-            key={i}
-            style={[
-              styles.radialRing,
-              {
-                width: d,
-                height: d,
-                marginLeft: -d / 2,
-                marginTop: -d / 2,
-                borderRadius: d / 2,
-                backgroundColor: preset.colors[i % preset.colors.length],
-                opacity,
-              },
-            ]}
-          />
-        );
-      })}
-    </>
-  );
-}
-
-// Destellos puntuales (además del sheen diagonal) — puntitos fijos en la
-// carta que titilan solos en loop, independiente del tilt, como el sparkle
-// real del foil visto de cerca. Cada uno es su propio componente (no un
-// `.map` llamando hooks) porque cada punto necesita su propio shared value
-// con fase/duración propia para no titilar todos sincronizados.
-// 18 (antes 10) y con un piso de opacidad de 0.4 (antes 0.15) — se
-// reportaron como "muy sutiles o muy poquitos". Cada uno suma un halo ancho
-// y tenue detrás del punto brillante (mismo truco que GlowBand) para que se
-// note más incluso cuando está en el valle del titileo.
+// Destellos puntuales (además de las capas de gradiente) — puntitos fijos en
+// la carta que titilan solos en loop, independiente del tilt, como el
+// sparkle real del foil visto de cerca. Cada uno es su propio componente (no
+// un `.map` llamando hooks) porque cada punto necesita su propio shared
+// value con fase/duración propia para no titilar todos sincronizados.
 const SPARKLE_COUNT = 18;
 const SPARKLE_MIN_OPACITY = 0.4;
 
@@ -507,11 +566,9 @@ export default function ImageViewerModal({
 
   // Brillo holo falso — TCGdex no da textura/patrón real de foil por carta,
   // solo el texto de rareza (getHoloKind lo mapea a un preset de HOLO_PRESETS).
-  // El sheen diagonal se desplaza con el mismo tilt de arrastrar (tiltX/tiltY,
-  // ya calculado arriba) — más visible cuanto más se inclina la carta, como
-  // el reflejo que sigue el gesto en la app real. Se apaga sola al mostrar el
-  // reverso (spin >= 90).
-  const holoStyle = useAnimatedStyle(() => {
+  // Se hace más intenso cuanto más se inclina la carta, como el reflejo que
+  // sigue el gesto en la app real. Se apaga sola al mostrar el reverso.
+  const holoOpacityStyle = useAnimatedStyle(() => {
     if (!holoPreset) return { opacity: 0 };
     const magnitude = (Math.abs(tiltX.value) + Math.abs(tiltY.value)) / 50;
     return {
@@ -519,12 +576,22 @@ export default function ImageViewerModal({
         spin.value < 90
           ? Math.min(holoPreset.maxOpacity, holoPreset.baseOpacity + magnitude)
           : 0,
-      transform: [
-        { translateX: tiltY.value * 4 },
-        { translateY: tiltX.value * -4 },
-      ],
     };
   });
+
+  // Cada capa se desplaza (`pan`) con el tilt a su propia velocidad — el
+  // glare se mueve más que el streak principal, y las rayas de grano casi no
+  // se mueven, para dar sensación de profundidad (varias superficies a
+  // distinta "distancia"), como el mouse-tracking de la demo de referencia.
+  const mainPanStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tiltY.value * 4 }, { translateY: tiltX.value * -4 }],
+  }));
+  const grainPanStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tiltY.value * 1.5 }, { translateY: tiltX.value * -1.5 }],
+  }));
+  const glarePanStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tiltY.value * 6 }, { translateY: tiltX.value * -6 }],
+  }));
 
   // Los destellos titilan solos (Sparkle ya anima su propio loop) — este
   // contenedor solo los oculta al mostrar el reverso, sin depender del tilt.
@@ -578,49 +645,39 @@ export default function ImageViewerModal({
         <GestureDetector gesture={composed}>
           <Animated.View style={[styles.centered, zoomStyle]}>
             {imageUri ? (
-              // El transform 3D (tiltStyle) va en este wrapper de afuera, sin
-              // overflow propio — en Android, `overflow: hidden` no recorta
-              // una vista que a la vez tiene rotateX/rotateY, así que el
-              // holoOverlay (más grande que la carta, para poder barrerla en
-              // diagonal) se veía sin recortar por toda la pantalla. El
-              // recorte real vive en el `View` plano de adentro (cardClip),
-              // que no tiene transform propio.
-              <Animated.View style={[imageSize, tiltStyle]}>
-                <View style={[StyleSheet.absoluteFill, styles.cardClip]}>
-                  <Animated.Image
-                    source={{ uri: imageUri }}
-                    style={[styles.face, frontStyle]}
-                    resizeMode="contain"
-                  />
-                  <Animated.Image
-                    source={require('../../assets/icons/card_reverse.png')}
-                    style={[styles.face, styles.backFace, backStyle]}
-                    resizeMode="contain"
-                  />
-                  {holoPreset ? (
-                    <Animated.View
-                      pointerEvents="none"
-                      style={[styles.holoOverlay, holoStyle]}
-                    >
-                      {holoPreset.mechanic === 'radial' ? (
-                        <RadialGlow preset={holoPreset} size={Math.min(cardWidth, cardHeight)} />
-                      ) : holoPreset.mechanic === 'crosshatch' ? (
-                        <>
-                          <CrosshatchLines preset={holoPreset} rotateDeg={30} offset={0} />
-                          <CrosshatchLines
-                            preset={holoPreset}
-                            rotateDeg={-30}
-                            offset={50 / CROSSHATCH_LINES}
-                          />
-                        </>
-                      ) : (
-                        <BandGroup preset={holoPreset} rotateDeg={30} />
-                      )}
+              // `tiltStyle` (rotateX/rotateY, 3D real) va SOLO en la imagen de
+              // la carta. El holo (blend-mode) es un hermano aparte, sin ese
+              // transform 3D — Android no recorta bien un View con
+              // `mixBlendMode` cuando un ancestro tiene rotateX/rotateY (bug
+              // de la plataforma, ver comentario de HOLO_PRESETS). Sacando el
+              // blend-mode del árbol rotado, el brillo ya no rota en 3D junto
+              // con la carta, solo la sigue con translate (ver *PanStyle).
+              <View style={imageSize}>
+                <Animated.View style={[StyleSheet.absoluteFill, tiltStyle]}>
+                  <View style={[StyleSheet.absoluteFill, styles.cardClip]}>
+                    <Animated.Image
+                      source={{ uri: imageUri }}
+                      style={[styles.face, frontStyle]}
+                      resizeMode="contain"
+                    />
+                    <Animated.Image
+                      source={require('../../assets/icons/card_reverse.png')}
+                      style={[styles.face, styles.backFace, backStyle]}
+                      resizeMode="contain"
+                    />
+                  </View>
+                </Animated.View>
+                {holoPreset ? (
+                  <View
+                    pointerEvents="none"
+                    style={[StyleSheet.absoluteFill, styles.cardClip]}
+                  >
+                    <Animated.View style={[styles.holoOverlay, holoOpacityStyle]}>
+                      <GradientPanLayer layer={holoPreset.layers[0]} panStyle={mainPanStyle} />
+                      <GradientPanLayer layer={holoPreset.layers[1]} panStyle={grainPanStyle} />
+                      <GradientPanLayer layer={holoPreset.layers[2]} panStyle={glarePanStyle} />
                     </Animated.View>
-                  ) : null}
-                  {holoPreset ? (
                     <Animated.View
-                      pointerEvents="none"
                       style={[styles.holoOverlay, sparkleContainerStyle]}
                     >
                       {sparkles.map((s, i) => (
@@ -634,9 +691,9 @@ export default function ImageViewerModal({
                         />
                       ))}
                     </Animated.View>
-                  ) : null}
-                </View>
-              </Animated.View>
+                  </View>
+                ) : null}
+              </View>
             ) : (
               <View style={imageSize} />
             )}
@@ -644,11 +701,11 @@ export default function ImageViewerModal({
         </GestureDetector>
 
         {imageUri ? (
-          // Elegir a mano qué variante de brillo ver, para las 4 aunque la
-          // carta no sea de esa rareza en realidad (para jugar/comparar) —
-          // no se guarda, cada carta nueva vuelve a "Auto" solo.
+          // Elegir a mano qué variante de brillo ver (o "Ninguno" para ver la
+          // carta lisa aunque sea holo de verdad) — no se guarda, cada carta
+          // nueva vuelve a "Auto" sola.
           <View style={styles.styleRow} pointerEvents="box-none">
-            {([null, ...HOLO_KINDS] as (HoloKind | null)[]).map(kind => {
+            {([null, 'none', ...HOLO_KINDS] as (HoloKind | null)[]).map(kind => {
               const active = styleOverride === kind;
               return (
                 <Pressable
@@ -687,21 +744,36 @@ const styles = StyleSheet.create({
   backFace: { position: 'absolute', top: 0, left: 0 },
   cardClip: { overflow: 'hidden', borderRadius: 12 },
   holoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  // Franja diagonal más grande que la carta (para que al rotarla 30° siga
-  // cubriendo de punta a punta) — el `cardClip` de afuera la recorta a los
-  // límites reales de la carta.
-  sheenRotate: {
+  // Caja más grande que la carta — al desplazarla con el tilt (*PanStyle)
+  // el `cardClip` de afuera recorta a los límites reales sin que se le vean
+  // los bordes vacíos.
+  panBox: {
     position: 'absolute',
-    top: '-60%',
-    left: '-20%',
-    width: '140%',
-    height: '220%',
-    transform: [{ rotate: '30deg' }],
+    top: '-30%',
+    left: '-30%',
+    width: '160%',
+    height: '160%',
   },
-  sheenBand: { position: 'absolute', top: 0, bottom: 0 },
-  radialRing: { position: 'absolute', top: '50%', left: '50%' },
-  sparkle: { position: 'absolute', width: 7, height: 7, borderRadius: 4, marginLeft: -3.5, marginTop: -3.5 },
-  sparkleHalo: { position: 'absolute', width: 16, height: 16, borderRadius: 8, marginLeft: -8, marginTop: -8 },
+  // mixBlendMode 'screen': el punto ilumina en vez de tapar con un círculo
+  // de color plano.
+  sparkle: {
+    position: 'absolute',
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    marginLeft: -3.5,
+    marginTop: -3.5,
+    mixBlendMode: 'screen',
+  },
+  sparkleHalo: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginLeft: -8,
+    marginTop: -8,
+    mixBlendMode: 'screen',
+  },
   styleRow: {
     position: 'absolute',
     bottom: 40,
