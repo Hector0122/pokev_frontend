@@ -1,0 +1,53 @@
+# Publica un APK firmado como GitHub Release al hacer push de un tag `v*`
+# (p. ej. `git tag v1.1.0 && git push origin v1.1.0`). La app compara su
+# versión con la última release y ofrece actualizar (src/services/updates.ts).
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.16.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: pnpm install --frozen-lockfile
+      - name: Versión de la app desde el tag
+        run: |
+          printf "export const APP_VERSION: string | null = '%s';\n" "${GITHUB_REF_NAME#v}" > src/appVersion.ts
+      # A diferencia de Vital, PokeV habla con el backend en Railway: sin la
+      # key familiar (header x-app-key) el APK compila pero toda la API da 401.
+      - name: .env con la key del backend
+        env:
+          APP_API_KEY: ${{ secrets.POKEV_APP_API_KEY }}
+        run: printf 'APP_API_KEY=%s\n' "$APP_API_KEY" > .env
+      - name: Keystore de release
+        run: echo "${{ secrets.POKEV_KEYSTORE_BASE64 }}" | base64 -d > android/app/pokev-release.keystore
+      - name: Compilar APK
+        working-directory: android
+        env:
+          POKEV_KEYSTORE_PASSWORD: ${{ secrets.POKEV_KEYSTORE_PASSWORD }}
+          POKEV_KEY_PASSWORD: ${{ secrets.POKEV_KEY_PASSWORD }}
+          POKEV_KEY_ALIAS: ${{ secrets.POKEV_KEY_ALIAS }}
+        run: ./gradlew assembleRelease -PversionCode=${{ github.run_number }} -PversionName=${GITHUB_REF_NAME#v}
+      - name: Publicar release
+        run: |
+          mv android/app/build/outputs/apk/release/app-release.apk "pokev-${GITHUB_REF_NAME}.apk"
+          gh release create "$GITHUB_REF_NAME" "pokev-${GITHUB_REF_NAME}.apk" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

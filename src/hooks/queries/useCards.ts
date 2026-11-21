@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createCard, deleteCard, fetchCard, fetchCardStats, fetchCards, setCardFavorite, updateCard } from '../../api/cards';
-import type { CreateCardInput, TrainerRole, UpdateCardInput } from '../../api/types';
+import type { Card, CreateCardInput, TrainerRole, UpdateCardInput } from '../../api/types';
+import { fetchCardPrice } from '../../services/tcgdex';
 import { queryKeys } from './queryKeys';
 
 /** "Mi colección" (§5) — exclusivamente cartas que realmente poseen. */
@@ -13,6 +14,24 @@ export function useCard(id: string | undefined) {
     queryKey: queryKeys.card(id ?? ''),
     queryFn: () => fetchCard(id as string),
     enabled: !!id,
+  });
+}
+
+const PRICE_STALE_MS = 12 * 60 * 60 * 1000; // TCGdex actualiza precios ~1 vez al día
+
+/** Opciones de query del precio en vivo de una carta — compartidas por el detalle y la home (useQueries). */
+export function cardPriceQuery(card: Pick<Card, 'tcgdexId' | 'setName' | 'cardNumber'>) {
+  return {
+    queryKey: queryKeys.cardPrice(card.tcgdexId ?? `${card.setName}#${card.cardNumber}`),
+    queryFn: () => fetchCardPrice(card),
+    staleTime: PRICE_STALE_MS,
+  };
+}
+
+export function useCardPrice(card: Card | undefined) {
+  return useQuery({
+    ...cardPriceQuery(card ?? { tcgdexId: null, setName: '', cardNumber: '' }),
+    enabled: !!card,
   });
 }
 

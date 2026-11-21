@@ -5,7 +5,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../theme/ThemeContext';
 import { typeInfo } from '../services/pokemonTypes';
-import { useCard, useDeleteCard, useSetCardFavorite } from '../hooks/queries/useCards';
+import { useCard, useCardPrice, useDeleteCard, useSetCardFavorite } from '../hooks/queries/useCards';
+import { cardArtwork, cardTitle, categoryIcon } from '../services/cardDisplay';
+import { formatPrice } from '../services/tcgdex';
 import { useTrainers } from '../hooks/queries/useTrainers';
 import { runWithAchievementUnlockDetection } from '../hooks/queries/useAchievements';
 import QueryState from '../components/QueryState';
@@ -34,6 +36,7 @@ export default function CardDetailScreen({ route, navigation }: Props) {
   const queryClient = useQueryClient();
 
   const cardQuery = useCard(cardId);
+  const priceQuery = useCardPrice(cardQuery.data);
   const trainersQuery = useTrainers();
   const deleteCard = useDeleteCard();
   const setFavorite = useSetCardFavorite();
@@ -83,8 +86,11 @@ export default function CardDetailScreen({ route, navigation }: Props) {
           <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.huge }}>
             {(() => {
               const card = cardQuery.data;
-              const info = typeInfo(card.pokemon.primaryType);
-              const artwork = card.imageUrl ?? card.pokemon.spriteUrl;
+              const pokemon = card.pokemon;
+              const info = pokemon
+                ? typeInfo(pokemon.primaryType)
+                : { ...typeInfo('desconocido'), icon: categoryIcon(card.category) };
+              const artwork = cardArtwork(card);
               const favoriteRoles = new Set(card.favoritedBy.map((f) => f.trainer.role));
 
               return (
@@ -108,18 +114,54 @@ export default function CardDetailScreen({ route, navigation }: Props) {
                     )}
                   </Pressable>
 
-                  <Pressable onPress={() => navigation.navigate('PokemonDetail', { pokemonId: card.pokemon.id })}>
-                    <Text style={[styles.capitalize, { ...type.display, fontFamily: fontFamily.display, color: colors.text }]}>
-                      {card.pokemon.name}
-                    </Text>
-                    <Text style={{ ...type.body, color: colors.textSecondary }}>
-                      {info.icon} {info.es}
-                      {card.pokemon.secondaryType ? ` · ${typeInfo(card.pokemon.secondaryType).es}` : ''}
-                    </Text>
-                    <Text style={[styles.bold, { ...type.bodySm, color: colors.primary, marginTop: spacing.xxs }]}>
-                      Ver Pokémon →
-                    </Text>
-                  </Pressable>
+                  {pokemon ? (
+                    <Pressable onPress={() => navigation.navigate('PokemonDetail', { pokemonId: pokemon.id })}>
+                      <Text style={[styles.capitalize, { ...type.display, fontFamily: fontFamily.display, color: colors.text }]}>
+                        {pokemon.name}
+                      </Text>
+                      <Text style={{ ...type.body, color: colors.textSecondary }}>
+                        {info.icon} {info.es}
+                        {pokemon.secondaryType ? ` · ${typeInfo(pokemon.secondaryType).es}` : ''}
+                      </Text>
+                      <Text style={[styles.bold, { ...type.bodySm, color: colors.primary, marginTop: spacing.xxs }]}>
+                        Ver Pokémon →
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <View>
+                      <Text style={{ ...type.display, fontFamily: fontFamily.display, color: colors.text }}>
+                        {cardTitle(card)}
+                      </Text>
+                      <Text style={{ ...type.body, color: colors.textSecondary }}>
+                        {info.icon} {card.category ?? 'Entrenador'}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View
+                    style={[
+                      styles.priceBanner,
+                      { backgroundColor: colors.accentSoft, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md },
+                    ]}
+                  >
+                    <Text style={styles.priceEmoji}>💰</Text>
+                    <View style={styles.flex1}>
+                      <Text style={{ ...type.label, color: colors.textSecondary }}>¿CUÁNTO VALE HOY?</Text>
+                      <Text style={{ ...type.h1, fontFamily: fontFamily.display, color: colors.text }}>
+                        {priceQuery.isLoading
+                          ? 'Buscando…'
+                          : priceQuery.data
+                            ? formatPrice(priceQuery.data)
+                            : 'Sin precio en el mercado'}
+                      </Text>
+                      {priceQuery.data ? (
+                        <Text style={{ ...type.caption, color: colors.textSecondary }}>
+                          {priceQuery.data.currency === 'USD' ? 'Precio de mercado en TCGplayer' : 'Tendencia en Cardmarket'}
+                          {card.quantity > 1 ? ' · cada una' : ''}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
 
                   <View style={[styles.row, { gap: spacing.sm }]}>
                     {(['DAD', 'KID'] as const).map((role) => {
@@ -227,7 +269,7 @@ export default function CardDetailScreen({ route, navigation }: Props) {
 
       <ImageViewerModal
         visible={viewerVisible}
-        imageUri={cardQuery.data ? cardQuery.data.imageUrl ?? cardQuery.data.pokemon.spriteUrl : null}
+        imageUri={cardQuery.data ? cardArtwork(cardQuery.data) : null}
         onClose={() => setViewerVisible(false)}
         rarity={cardQuery.data?.rarity}
       />
@@ -255,6 +297,8 @@ const styles = StyleSheet.create({
   icon18: { fontSize: 18 },
   artwork: { width: 180, height: 180 },
   artworkIcon: { fontSize: 80 },
+  priceBanner: { flexDirection: 'row', alignItems: 'center' },
+  priceEmoji: { fontSize: 36 },
   favoriteButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   normalStyle: { fontStyle: 'normal' },
   italicStyle: { fontStyle: 'italic' },

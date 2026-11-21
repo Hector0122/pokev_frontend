@@ -25,6 +25,7 @@ import {
   type TcgCardSummary,
   type TcgSet,
 } from '../services/tcgdex';
+import { cardTitle } from '../services/cardDisplay';
 import AppIcon from '../components/AppIcon';
 import ImageViewerModal from '../components/ImageViewerModal';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -148,13 +149,14 @@ export default function SearchScreen() {
   const ownedKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const card of ownedCardsQuery.data ?? []) {
-      keys.add(`${normalizeForSearch(card.pokemon.name)}__${card.cardNumber.trim()}`);
+      keys.add(`${normalizeForSearch(cardTitle(card))}__${card.cardNumber.trim()}`);
+      if (card.tcgdexId) keys.add(card.tcgdexId);
     }
     return keys;
   }, [ownedCardsQuery.data]);
 
   function isOwned(card: TcgCardSummary) {
-    return ownedKeys.has(`${normalizeForSearch(card.name)}__${card.localId.trim()}`);
+    return ownedKeys.has(card.id) || ownedKeys.has(`${normalizeForSearch(card.name)}__${card.localId.trim()}`);
   }
 
   async function openCard(card: TcgCardSummary) {
@@ -200,6 +202,9 @@ export default function SearchScreen() {
       prefillSetName: selectedDetail.set.name,
       prefillCardNumber: selectedDetail.localId,
       prefillImageUrl: selectedDetail.image ? cardImageUrl(selectedDetail.image, 'high', 'png') : undefined,
+      prefillCardName: selectedDetail.name,
+      prefillCategory: selectedDetail.category,
+      prefillTcgdexId: selectedDetail.id,
     });
     closeDetail();
   }
