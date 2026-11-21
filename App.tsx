@@ -5,7 +5,7 @@
  * @format
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -13,12 +13,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useSyncFavoritesWidget } from './src/hooks/useSyncFavoritesWidget';
+import { checkForUpdate } from './src/services/updates';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
   const { colors } = useTheme();
   useSyncFavoritesWidget();
+  useEffect(() => {
+    checkForUpdate();
+  }, []);
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />

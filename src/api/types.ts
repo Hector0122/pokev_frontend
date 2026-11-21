@@ -43,7 +43,12 @@ export interface CardFavorite {
 
 export interface Card {
   id: string;
-  pokemonId: number;
+  /** Null en cartas de Entrenador/Energía. */
+  pokemonId: number | null;
+  /** Nombre impreso en la carta — siempre presente en cartas sin Pokémon. */
+  name: string | null;
+  category: string | null;
+  tcgdexId: string | null;
   setName: string;
   cardNumber: string;
   rarity: string | null;
@@ -63,7 +68,7 @@ export interface Card {
   isFirstCard: boolean;
   createdAt: string;
   updatedAt: string;
-  pokemon: Pokemon;
+  pokemon: Pokemon | null;
   favoritedBy: CardFavorite[];
   // Solo presente en GET /cards/:id.
   acquiredWith?: Trainer | null;
@@ -98,7 +103,11 @@ export interface PokemonRef {
 }
 
 export interface CreateCardInput {
-  pokemon: PokemonRef;
+  /** Omitido en cartas de Entrenador/Energía — ahí `name` es obligatorio. */
+  pokemon?: PokemonRef;
+  name?: string;
+  category?: string;
+  tcgdexId?: string;
   setName: string;
   cardNumber: string;
   rarity?: string | null;

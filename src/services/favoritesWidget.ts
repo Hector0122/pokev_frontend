@@ -34,6 +34,7 @@ import {
   type WidgetTaskHandlerProps,
 } from 'react-native-android-widget';
 import type { Card } from '../api/types';
+import { cardArtwork, cardTitle } from './cardDisplay';
 
 export const WIDGET_NAME = 'FavoriteCard';
 const CACHE_KEY = 'favorite_cards_widget_cache_v1';
@@ -59,8 +60,8 @@ const DEFAULT_STATE: WidgetState = { lastShownId: null, face: 'front' };
 function toSummary(card: Card): FavoriteCardSummary {
   return {
     id: card.id,
-    pokemonName: card.pokemon.name,
-    imageUrl: card.imageUrl ?? card.pokemon.spriteUrl,
+    pokemonName: cardTitle(card),
+    imageUrl: cardArtwork(card),
   };
 }
 

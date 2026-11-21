@@ -67,6 +67,12 @@ export default function AddCardScreen({ navigation, route }: Props) {
   const prefill = route.params;
 
   const [selected, setSelected] = useState<SelectedPokemon | null>(null);
+  // Cartas de Entrenador/Energía: no hay especie que elegir, solo nombre + categoría.
+  const [nonPokemon, setNonPokemon] = useState<{ name: string; category: string } | null>(() =>
+    prefill?.prefillCategory && prefill.prefillCategory !== 'Pokémon'
+      ? { name: prefill.prefillCardName ?? '', category: prefill.prefillCategory }
+      : null,
+  );
   const [searchTerm, setSearchTerm] = useState(prefill?.prefillPokemonName ?? '');
   const [searchResults, setSearchResults] = useState<PokemonSpeciesListItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -88,7 +94,7 @@ export default function AddCardScreen({ navigation, route }: Props) {
   // en el formulario": la búsqueda manual es el respaldo, no el paso 1.
   useEffect(() => {
     const name = prefill?.prefillPokemonName;
-    if (!name) return;
+    if (!name || nonPokemon) return;
     setSearchTerm(name);
     setIsSearching(true);
     setSearchError(null);
@@ -161,23 +167,28 @@ export default function AddCardScreen({ navigation, route }: Props) {
   }
 
   async function handleSave() {
-    if (!selected || !values.setName.trim() || !values.cardNumber.trim() || saving) return;
+    if (!canSave || saving) return;
     setSaving(true);
     setSaveError(null);
 
-    const wasAlreadyDiscovered = (discoveredQuery.data ?? []).some((p) => p.id === selected.id);
+    const wasAlreadyDiscovered = !selected || (discoveredQuery.data ?? []).some((p) => p.id === selected.id);
 
     const trimmedImageUrl = values.imageUrl.trim();
     const imageUrl = trimmedImageUrl ? await resolveImageUrlForSave(trimmedImageUrl) : undefined;
 
     const input: CreateCardInput = {
-      pokemon: {
-        id: selected.id,
-        name: selected.name,
-        primaryType: selected.details?.primaryType ?? 'desconocido',
-        secondaryType: selected.details?.secondaryType ?? undefined,
-        spriteUrl: selected.details?.spriteUrl ?? officialArtworkUrl(selected.id),
-      },
+      pokemon: selected
+        ? {
+            id: selected.id,
+            name: selected.name,
+            primaryType: selected.details?.primaryType ?? 'desconocido',
+            secondaryType: selected.details?.secondaryType ?? undefined,
+            spriteUrl: selected.details?.spriteUrl ?? officialArtworkUrl(selected.id),
+          }
+        : undefined,
+      name: nonPokemon ? nonPokemon.name.trim() : prefill?.prefillCardName,
+      category: nonPokemon ? nonPokemon.category : 'Pokémon',
+      tcgdexId: prefill?.prefillTcgdexId,
       setName: values.setName.trim(),
       cardNumber: values.cardNumber.trim(),
       rarity: values.rarity.trim() || undefined,
@@ -204,8 +215,9 @@ export default function AddCardScreen({ navigation, route }: Props) {
       // Toast en vez de un modal a tocar (pedido explícito: "no quiero tener
       // que dar tantos clics al momento de guardar") — un solo mensaje, el
       // más relevante, y directo a Home sin esperar ningún tap.
-      const message = !wasAlreadyDiscovered
-        ? `¡Nuevo Pokémon descubierto! Agregaron su primera carta de ${selected.name}.`
+      const message =
+        selected && !wasAlreadyDiscovered
+          ? `¡Nuevo Pokémon descubierto! Agregaron su primera carta de ${selected.name}.`
         : (newlyUnlocked[0] as AchievementStatus | undefined)?.title
           ? `¡Logro desbloqueado! ${(newlyUnlocked[0] as AchievementStatus).title}`
           : '¡Carta agregada!';
@@ -220,7 +232,8 @@ export default function AddCardScreen({ navigation, route }: Props) {
     }
   }
 
-  const canSave = !!selected && values.setName.trim().length > 0 && values.cardNumber.trim().length > 0;
+  const canSave =
+    (!!selected || !!nonPokemon?.name.trim()) && values.setName.trim().length > 0 && values.cardNumber.trim().length > 0;
 
   return (
     <SafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
@@ -232,7 +245,7 @@ export default function AddCardScreen({ navigation, route }: Props) {
         <Text style={{ ...type.h1, color: colors.text }}>Agregar carta</Text>
       </View>
 
-      {!selected ? (
+      {!selected && !nonPokemon ? (
         <View style={[styles.flex1, { padding: spacing.lg, gap: spacing.md }]}>
           <TextField
             label="¿Qué Pokémon es?"
@@ -241,6 +254,11 @@ export default function AddCardScreen({ navigation, route }: Props) {
             onChangeText={handleSearch}
             placeholder="Ej. Pikachu"
             autoFocus
+          />
+          <Button
+            title="🎒 No es un Pokémon (Entrenador / Energía)"
+            variant="ghost"
+            onPress={() => setNonPokemon({ name: searchTerm, category: 'Entrenador' })}
           />
           {isSearching ? <LoadingSpinner size={32} /> : null}
           {searchError ? <Text style={{ ...type.bodySm, color: colors.danger }}>{searchError}</Text> : null}
@@ -272,6 +290,42 @@ export default function AddCardScreen({ navigation, route }: Props) {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.huge }}>
+          {nonPokemon ? (
+            <View style={{ gap: spacing.sm }}>
+              <View style={[styles.headerRow, { gap: spacing.sm }]}>
+                {['Entrenador', 'Energía'].map((category) => (
+                  <Pressable
+                    key={category}
+                    onPress={() => setNonPokemon({ ...nonPokemon, category })}
+                    style={[
+                      styles.chip,
+                      {
+                        paddingVertical: spacing.xs,
+                        paddingHorizontal: spacing.md,
+                        backgroundColor: nonPokemon.category === category ? colors.accentSoft : colors.surfaceAlt,
+                        borderColor: nonPokemon.category === category ? colors.accent : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.bold, { ...type.bodySm, color: colors.text }]}>
+                      {category === 'Energía' ? '⚡' : '🎒'} {category}
+                    </Text>
+                  </Pressable>
+                ))}
+                <View style={styles.flex1} />
+                <Pressable onPress={() => setNonPokemon(null)}>
+                  <Text style={[styles.bold, { ...type.bodySm, color: colors.primary }]}>Es un Pokémon</Text>
+                </Pressable>
+              </View>
+              <TextField
+                label="Nombre de la carta"
+                required
+                value={nonPokemon.name}
+                onChangeText={(name) => setNonPokemon({ ...nonPokemon, name })}
+                placeholder="Ej. Investigación de Profesores"
+              />
+            </View>
+          ) : selected ? (
           <View style={[styles.headerRow, { gap: spacing.md }]}>
             <Image
               source={{ uri: selected.details?.spriteUrl ?? officialArtworkUrl(selected.id) }}
@@ -292,6 +346,7 @@ export default function AddCardScreen({ navigation, route }: Props) {
               <Text style={[styles.bold, { ...type.bodySm, color: colors.primary }]}>Cambiar</Text>
             </Pressable>
           </View>
+          ) : null}
 
           {values.imageUrl ? (
             // La foto real (recortada) que se va a guardar — para que el
@@ -323,6 +378,7 @@ const styles = StyleSheet.create({
   backArrow: { fontSize: 24 },
   capitalize: { textTransform: 'capitalize' },
   bold: { fontWeight: '600' },
+  chip: { borderRadius: 999, borderWidth: 1 },
   speciesTile: { flex: 1, alignItems: 'center', borderRadius: 14, borderWidth: 1 },
   speciesImage: { width: 64, height: 64 },
   selectedImage: { width: 72, height: 72 },

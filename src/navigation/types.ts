@@ -33,6 +33,11 @@ export type RootStackParamList = {
         prefillSetName?: string;
         prefillCardNumber?: string;
         prefillImageUrl?: string;
+        /** Nombre impreso en la carta ("Investigación de Profesores"). */
+        prefillCardName?: string;
+        /** "Pokémon" | "Entrenador" | "Energía" — si no es Pokémon se salta elegir especie. */
+        prefillCategory?: string;
+        prefillTcgdexId?: string;
       }
     | undefined;
   EditCard: { cardId: string };

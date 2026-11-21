@@ -82,8 +82,10 @@ android {
         applicationId "com.pokev"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // El workflow de release los pasa con -PversionCode/-PversionName
+        // (versionCode tiene que crecer en cada APK para poder actualizar).
+        versionCode((findProperty('versionCode') ?: '1').toInteger())
+        versionName(findProperty('versionName') ?: '1.0')
     }
     signingConfigs {
         debug {
@@ -92,15 +94,21 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Keystore de release: lo escribe el workflow desde los secrets de
+        // GitHub; las contraseñas llegan por variables de entorno.
+        release {
+            storeFile file('pokev-release.keystore')
+            storePassword System.getenv('POKEV_KEYSTORE_PASSWORD')
+            keyAlias System.getenv('POKEV_KEY_ALIAS') ?: 'pokev'
+            keyPassword System.getenv('POKEV_KEY_PASSWORD')
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig file('pokev-release.keystore').exists() ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

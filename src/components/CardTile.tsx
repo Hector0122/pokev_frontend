@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { typeInfo } from '../services/pokemonTypes';
+import { cardArtwork, cardTitle, categoryIcon } from '../services/cardDisplay';
 import type { Card } from '../api/types';
 
 interface Props {
@@ -15,8 +16,10 @@ interface Props {
  */
 export default function CardTile({ card, onPress }: Props) {
   const { colors, spacing, radius, type, fontFamily, elevation } = useTheme();
-  const artwork = card.imageUrl ?? card.pokemon.spriteUrl;
-  const info = typeInfo(card.pokemon.primaryType);
+  const artwork = cardArtwork(card);
+  const info = card.pokemon
+    ? typeInfo(card.pokemon.primaryType)
+    : { ...typeInfo('desconocido'), icon: categoryIcon(card.category) };
   const isFavorite = card.favoritedBy.length > 0;
 
   return (
@@ -55,7 +58,7 @@ export default function CardTile({ card, onPress }: Props) {
       </View>
       <View style={[styles.footer, { padding: spacing.sm }]}>
         <Text numberOfLines={1} style={[styles.bold, { ...type.bodySm, color: colors.text }]}>
-          {card.pokemon.name}
+          {cardTitle(card)}
         </Text>
         <Text numberOfLines={1} style={{ ...type.caption, color: colors.textSecondary, fontFamily: fontFamily.mono }}>
           {card.setName} · #{card.cardNumber}

@@ -29,7 +29,20 @@ export interface TcgSet {
   symbol?: string;
 }
 
+export interface TcgPricing {
+  tcgplayer?: { unit: 'USD' } & Record<string, { marketPrice?: number | null } | string | undefined>;
+  cardmarket?: { unit: 'EUR'; trend?: number | null; avg?: number | null };
+}
+
+export interface CardPrice {
+  amount: number;
+  currency: 'USD' | 'EUR';
+}
+
 export interface TcgCardDetail extends TcgCardSummary {
+  /** "Pokémon" | "Entrenador" | "Energía" */
+  category?: string;
+  pricing?: TcgPricing;
   rarity?: string;
   illustrator?: string;
   set: TcgSet;
@@ -73,12 +86,46 @@ export async function searchCards({ name, setId }: SearchCardsParams, limit = 50
   if (trimmedName) params.set('name', trimmedName);
   if (setId) params.set('set.id', `eq:${setId}`);
 
+  let results = await fetchCardList(params);
+  // TCGdex distingue acentos ("Energia" → 0, "Energía" → 387) y un niño no
+  // los escribe: si no hubo nada, probamos con una tilde en cada vocal.
+  if (results.length === 0 && trimmedName) {
+    const lists = await Promise.all(
+      accentVariants(trimmedName).map((variant) => {
+        const variantParams = new URLSearchParams(params);
+        variantParams.set('name', variant);
+        return fetchCardList(variantParams).catch(() => [] as TcgCardSummary[]);
+      }),
+    );
+    const seen = new Set<string>();
+    results = lists.flat().filter((card) => {
+      if (seen.has(card.id)) return false;
+      seen.add(card.id);
+      return true;
+    });
+  }
+  return results.slice(0, limit);
+}
+
+async function fetchCardList(params: URLSearchParams): Promise<TcgCardSummary[]> {
   const response = await fetch(`${BASE_URL}/cards?${params.toString()}`);
   if (!response.ok) {
     throw new Error(`TCGdex respondió ${response.status} al buscar cartas`);
   }
-  const results = (await response.json()) as TcgCardSummary[];
-  return results.slice(0, limit);
+  return (await response.json()) as TcgCardSummary[];
+}
+
+const ACCENTED: Record<string, string> = { a: 'á', e: 'é', i: 'í', o: 'ó', u: 'ú' };
+
+/** "energia" → ["énergia", "enérgia", "energía", "energiá"] — una tilde por variante. Vacío si ya trae tildes. */
+export function accentVariants(text: string): string[] {
+  if (/[áéíóú]/i.test(text)) return [];
+  const variants: string[] = [];
+  for (let i = 0; i < text.length && variants.length < 8; i++) {
+    const accented = ACCENTED[text[i].toLowerCase()];
+    if (accented) variants.push(text.slice(0, i) + accented + text.slice(i + 1));
+  }
+  return variants;
 }
 
 /**
@@ -128,4 +175,60 @@ export async function fetchCardDetail(id: string): Promise<TcgCardDetail> {
     throw new Error(`TCGdex respondió ${response.status} al pedir la carta ${id}`);
   }
   return (await response.json()) as TcgCardDetail;
+}
+
+/**
+ * Precio de referencia de una carta: precio de mercado de TCGplayer (USD),
+ * prefiriendo el acabado normal; si TCGplayer no la tiene, la tendencia de
+ * Cardmarket (EUR). Null si ninguna fuente tiene precio.
+ */
+export function pickPrice(pricing: TcgPricing | undefined): CardPrice | null {
+  const tcg = pricing?.tcgplayer;
+  if (tcg) {
+    for (const key of ['normal', 'holofoil', 'reverse-holofoil', ...Object.keys(tcg)]) {
+      const entry = tcg[key];
+      if (typeof entry === 'object' && entry?.marketPrice) return { amount: entry.marketPrice, currency: 'USD' };
+    }
+  }
+  const eur = pricing?.cardmarket?.trend || pricing?.cardmarket?.avg;
+  return eur ? { amount: eur, currency: 'EUR' } : null;
+}
+
+/**
+ * Ids de TCGdex candidatos para una carta guardada. Las cartas nuevas traen
+ * `tcgdexId`; las viejas solo tienen nombre de expansión + número, así que
+ * se cruza con la lista de sets. TCGdex rellena con ceros en sets nuevos
+ * ("sv01-005") y no en otros ("cel25-5"), por eso van las dos formas.
+ */
+export function tcgdexIdCandidates(
+  card: { tcgdexId?: string | null; setName: string; cardNumber: string },
+  sets: TcgSet[],
+): string[] {
+  if (card.tcgdexId) return [card.tcgdexId];
+  const wanted = card.setName.trim().toLowerCase();
+  const set = sets.find((s) => s.name.trim().toLowerCase() === wanted);
+  const number = card.cardNumber.trim();
+  if (!set || !number) return [];
+  const padded = /^\d+$/.test(number) ? number.padStart(3, '0') : number;
+  return Array.from(new Set([`${set.id}-${number}`, `${set.id}-${padded}`]));
+}
+
+/** Precio en vivo de una carta guardada — null si no la encontramos en TCGdex o no tiene precio. */
+export async function fetchCardPrice(card: {
+  tcgdexId?: string | null;
+  setName: string;
+  cardNumber: string;
+}): Promise<CardPrice | null> {
+  for (const id of tcgdexIdCandidates(card, await fetchSetsList())) {
+    const response = await fetch(`${BASE_URL}/cards/${id}`);
+    if (response.status === 404) continue;
+    if (!response.ok) throw new Error(`TCGdex respondió ${response.status} al pedir el precio de ${id}`);
+    return pickPrice(((await response.json()) as TcgCardDetail).pricing);
+  }
+  return null;
+}
+
+/** "$1.25 USD" / "€0.80" */
+export function formatPrice(price: CardPrice): string {
+  return price.currency === 'USD' ? `$${price.amount.toFixed(2)} USD` : `€${price.amount.toFixed(2)}`;
 }
