@@ -15,9 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # pnpm 10, el mismo que generó el lockfile: pnpm 12 ya no lee
+      # `node-linker=hoisted` de .npmrc y Gradle no encuentra
+      # node_modules/@react-native/gradle-plugin.
       - uses: pnpm/action-setup@v4
         with:
-          version: 12.16.1
+          version: 10.6.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
