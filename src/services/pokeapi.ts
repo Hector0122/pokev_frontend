@@ -32,6 +32,8 @@ export interface PokemonEvolutionStep {
   id: number;
   name: string;
   spriteUrl: string | null;
+  /** Etapa anterior dentro de la misma cadena (null en la etapa base). */
+  evolvesFromId: number | null;
 }
 
 export interface PokemonDetails {
@@ -124,10 +126,18 @@ interface EvolutionChainNode {
   evolves_to: EvolutionChainNode[];
 }
 
-function flattenEvolutionChain(node: EvolutionChainNode): PokemonEvolutionStep[] {
+function flattenEvolutionChain(
+  node: EvolutionChainNode,
+  parentId: number | null = null,
+): PokemonEvolutionStep[] {
   const id = extractIdFromUrl(node.species.url);
-  const step: PokemonEvolutionStep = { id, name: node.species.name, spriteUrl: officialArtworkUrl(id) };
-  return [step, ...node.evolves_to.flatMap(flattenEvolutionChain)];
+  const step: PokemonEvolutionStep = {
+    id,
+    name: node.species.name,
+    spriteUrl: officialArtworkUrl(id),
+    evolvesFromId: parentId,
+  };
+  return [step, ...node.evolves_to.flatMap((child) => flattenEvolutionChain(child, id))];
 }
 
 const GENERATION_TO_REGION: Record<string, string> = {

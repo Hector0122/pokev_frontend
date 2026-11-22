@@ -156,6 +156,7 @@ export default function AddCardScreen({ navigation, route }: Props) {
             id: step.id,
             name: step.name,
             spriteUrl: step.spriteUrl ?? undefined,
+            evolvesFromId: step.evolvesFromId ?? undefined,
           })),
         },
       });
