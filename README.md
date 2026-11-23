@@ -34,6 +34,26 @@ La mayoría de apps de colección están pensadas para coleccionistas adultos qu
 - 👨‍👦 Favoritas independientes por entrenador (papá / hijo / ambos)
 - 📷 Escaneo de cartas por foto con IA
 - 📱 Widget de Android: carta favorita del día, que se "voltea" al tocarla
+- 💰 Precio de cada carta y valor total del álbum (TCGdex: TCGplayer / Cardmarket)
+- 🎒 Cartas de Entrenador y Energía, además de Pokémon
+- 🎮 Minijuegos: Batalla papá vs hijo, ¿Cuál vale más?, ¿Quién es ese Pokémon?
+- 📚 Expansiones completas, con nuestras cartas resaltadas
+- ✨ Animación al conseguir carta, brillo en cartas raras y vibración
+- 🔄 Actualizaciones automáticas desde GitHub Releases
+
+## Ideas para después
+
+Ideas buenas que quedaron en pausa:
+
+1. 🔊 **Grito de cada Pokémon** — reproducir su sonido real al abrir el detalle (requiere una librería de audio).
+2. 🏆 **Marcador eterno papá vs hijo** — guardar en el backend los resultados de la Batalla, con corona para quien va ganando.
+3. 🧬 **Evoluciones** — mostrar la cadena evolutiva en el detalle del Pokémon, brillando las que tenemos.
+4. ⭐ **Mi equipo** — elegir 6 cartas favoritas como equipo, con pantalla para presumirlo.
+5. 🗣️ **Leer en voz alta** — nombre de la carta y su ataque, para ayudar mientras aprende a leer.
+6. 📅 **Recuerdos** — "Hace un mes conseguimos a Pikachu ⚡" en el Inicio.
+7. 🎁 **Lista de deseos** — marcar cartas soñadas, presentadas como sueño, nunca como "faltante".
+
+Sugerencia de arranque: 1 + 2 + 3 juntas como una versión.
 
 ## Stack
 
