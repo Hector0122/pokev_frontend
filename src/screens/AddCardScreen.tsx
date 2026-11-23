@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Image, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from 'react-native';
+import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
@@ -84,6 +84,7 @@ export default function AddCardScreen({ navigation, route }: Props) {
     setName: prefill?.prefillSetName ?? EMPTY_CARD_FORM_VALUES.setName,
     cardNumber: prefill?.prefillCardNumber ?? EMPTY_CARD_FORM_VALUES.cardNumber,
     imageUrl: prefill?.prefillImageUrl ?? EMPTY_CARD_FORM_VALUES.imageUrl,
+    rarity: prefill?.prefillRarity ?? EMPTY_CARD_FORM_VALUES.rarity,
   }));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -208,23 +209,20 @@ export default function AddCardScreen({ navigation, route }: Props) {
     };
 
     try {
-      const { newlyUnlocked } = await runWithAchievementUnlockDetection(queryClient, () =>
+      const { result: card, newlyUnlocked } = await runWithAchievementUnlockDetection(queryClient, () =>
         createCard.mutateAsync(input),
       );
 
-      // Toast en vez de un modal a tocar (pedido explícito: "no quiero tener
-      // que dar tantos clics al momento de guardar") — un solo mensaje, el
-      // más relevante, y directo a Home sin esperar ningún tap.
+      // Animación de "abrir carta" en vez del toast — pero sin sumar clics
+      // (pedido explícito: "no quiero tener que dar tantos clics al momento
+      // de guardar"): CardReveal se cierra sola y vuelve a Home.
       const message =
         selected && !wasAlreadyDiscovered
-          ? `¡Nuevo Pokémon descubierto! Agregaron su primera carta de ${selected.name}.`
-        : (newlyUnlocked[0] as AchievementStatus | undefined)?.title
-          ? `¡Logro desbloqueado! ${(newlyUnlocked[0] as AchievementStatus).title}`
-          : '¡Carta agregada!';
-      if (Platform.OS === 'android') {
-        ToastAndroid.show(message, ToastAndroid.LONG);
-      }
-      navigation.navigate('Main', { screen: 'Inicio' });
+          ? `¡Nuevo Pokémon descubierto!`
+          : (newlyUnlocked[0] as AchievementStatus | undefined)?.title
+            ? `¡Logro desbloqueado! ${(newlyUnlocked[0] as AchievementStatus).title}`
+            : '¡Carta nueva!';
+      navigation.replace('CardReveal', { cardId: card.id, headline: message });
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Algo salió mal. Probá de nuevo.');
     } finally {

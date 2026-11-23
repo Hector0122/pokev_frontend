@@ -25,7 +25,7 @@ import {
   type TcgCardSummary,
   type TcgSet,
 } from '../services/tcgdex';
-import { cardTitle } from '../services/cardDisplay';
+import { ownedMatcher } from '../services/cardDisplay';
 import AppIcon from '../components/AppIcon';
 import ImageViewerModal from '../components/ImageViewerModal';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -143,21 +143,8 @@ export default function SearchScreen() {
     [groups, numColumns],
   );
 
-  // Heurística "ya la tenés": mismo Pokémon + mismo número de carta. La
-  // expansión no entra en el match porque `setName` en la colección es
-  // texto libre que carga el usuario (CardFieldsForm), no un id de TCGdex.
-  const ownedKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const card of ownedCardsQuery.data ?? []) {
-      keys.add(`${normalizeForSearch(cardTitle(card))}__${card.cardNumber.trim()}`);
-      if (card.tcgdexId) keys.add(card.tcgdexId);
-    }
-    return keys;
-  }, [ownedCardsQuery.data]);
-
-  function isOwned(card: TcgCardSummary) {
-    return ownedKeys.has(card.id) || ownedKeys.has(`${normalizeForSearch(card.name)}__${card.localId.trim()}`);
-  }
+  // Heurística "ya la tenés" — ver ownedMatcher (compartida con Expansiones).
+  const isOwned = useMemo(() => ownedMatcher(ownedCardsQuery.data ?? []), [ownedCardsQuery.data]);
 
   async function openCard(card: TcgCardSummary) {
     setSelectedId(card.id);
@@ -205,6 +192,7 @@ export default function SearchScreen() {
       prefillCardName: selectedDetail.name,
       prefillCategory: selectedDetail.category,
       prefillTcgdexId: selectedDetail.id,
+      prefillRarity: selectedDetail.rarity,
     });
     closeDetail();
   }

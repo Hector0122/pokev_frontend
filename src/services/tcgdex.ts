@@ -43,6 +43,9 @@ export interface TcgCardDetail extends TcgCardSummary {
   /** "Pokémon" | "Entrenador" | "Energía" */
   category?: string;
   pricing?: TcgPricing;
+  hp?: number;
+  /** `damage` viene como número (30) o texto con modificador ("30+", "20×"). */
+  attacks?: { name: string; damage?: number | string }[];
   rarity?: string;
   illustrator?: string;
   set: TcgSet;
@@ -213,19 +216,32 @@ export function tcgdexIdCandidates(
   return Array.from(new Set([`${set.id}-${number}`, `${set.id}-${padded}`]));
 }
 
-/** Precio en vivo de una carta guardada — null si no la encontramos en TCGdex o no tiene precio. */
-export async function fetchCardPrice(card: {
+/**
+ * Detalle de TCGdex (precio, HP, ataques, rareza) de una carta guardada —
+ * null si no la encontramos. Un solo request alimenta precio, brillo y juegos.
+ */
+export async function fetchOwnedCardDetail(card: {
   tcgdexId?: string | null;
   setName: string;
   cardNumber: string;
-}): Promise<CardPrice | null> {
+}): Promise<TcgCardDetail | null> {
   for (const id of tcgdexIdCandidates(card, await fetchSetsList())) {
     const response = await fetch(`${BASE_URL}/cards/${id}`);
     if (response.status === 404) continue;
-    if (!response.ok) throw new Error(`TCGdex respondió ${response.status} al pedir el precio de ${id}`);
-    return pickPrice(((await response.json()) as TcgCardDetail).pricing);
+    if (!response.ok) throw new Error(`TCGdex respondió ${response.status} al pedir la carta ${id}`);
+    return (await response.json()) as TcgCardDetail;
   }
   return null;
+}
+
+/** Daño del ataque más fuerte ("30+" → 30, "20×" → 20); 0 si no tiene ataques con daño. */
+export function strongestAttack(attacks: { name: string; damage?: number | string }[] | undefined) {
+  let best: { name: string; damage: number } | null = null;
+  for (const attack of attacks ?? []) {
+    const damage = typeof attack.damage === 'number' ? attack.damage : parseInt(attack.damage ?? '', 10) || 0;
+    if (!best || damage > best.damage) best = { name: attack.name, damage };
+  }
+  return best;
 }
 
 /** "$1.25 USD" / "€0.80" */

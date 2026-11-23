@@ -7,6 +7,12 @@ import PokemonDetailScreen from '../screens/PokemonDetailScreen';
 import AddCardScreen from '../screens/AddCardScreen';
 import EditCardScreen from '../screens/EditCardScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
+import CardRevealScreen from '../screens/CardRevealScreen';
+import ValueGameScreen from '../screens/ValueGameScreen';
+import WhoGameScreen from '../screens/WhoGameScreen';
+import BattleScreen from '../screens/BattleScreen';
+import SetsScreen from '../screens/SetsScreen';
+import SetDetailScreen from '../screens/SetDetailScreen';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -28,6 +34,16 @@ export default function RootNavigator() {
         <Stack.Screen name="Special" component={FavoritesScreen} />
         <Stack.Screen name="AddCard" component={AddCardScreen} options={{ presentation: 'modal' }} />
         <Stack.Screen name="EditCard" component={EditCardScreen} options={{ presentation: 'modal' }} />
+        <Stack.Screen
+          name="CardReveal"
+          component={CardRevealScreen}
+          options={{ presentation: 'transparentModal', animation: 'fade' }}
+        />
+        <Stack.Screen name="GameValue" component={ValueGameScreen} />
+        <Stack.Screen name="GameWho" component={WhoGameScreen} />
+        <Stack.Screen name="GameBattle" component={BattleScreen} />
+        <Stack.Screen name="Sets" component={SetsScreen} />
+        <Stack.Screen name="SetDetail" component={SetDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

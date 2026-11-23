@@ -6,7 +6,7 @@ export const queryKeys = {
   card: (id: string) => ['cards', id] as const,
   cardStats: ['cards', 'stats'] as const,
   /** Fuera de ['cards'] a propósito: invalidar la colección no debe volver a pedir precios a TCGdex. */
-  cardPrice: (lookup: string) => ['cardPrice', lookup] as const,
+  cardTcg: (lookup: string) => ['cardTcg', lookup] as const,
   discoveredPokemon: ['pokemon'] as const,
   pokemon: (id: number) => ['pokemon', id] as const,
   achievements: ['achievements'] as const,

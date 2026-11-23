@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeContext';
 import HomeScreen from '../screens/HomeScreen';
 import CollectionScreen from '../screens/CollectionScreen';
 import SearchScreen from '../screens/SearchScreen';
+import GamesScreen from '../screens/GamesScreen';
 import AppIcon from '../components/AppIcon';
 import type { AppIconName } from '../theme/appIcons';
 import type { MainTabParamList } from './types';
@@ -25,6 +26,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const TAB_ICONS: Partial<Record<keyof MainTabParamList, string>> = {
   Inicio: '🏠',
   Buscador: '🔎',
+  Jugar: '🎮',
 };
 
 const TAB_APP_ICONS: Partial<Record<keyof MainTabParamList, AppIconName>> = {
@@ -54,6 +56,7 @@ function TabIcon({ routeName, focused }: { routeName: keyof MainTabParamList; fo
 const TabIconInicio = ({ focused }: { focused: boolean }) => <TabIcon routeName="Inicio" focused={focused} />;
 const TabIconColeccion = ({ focused }: { focused: boolean }) => <TabIcon routeName="Coleccion" focused={focused} />;
 const TabIconBuscador = ({ focused }: { focused: boolean }) => <TabIcon routeName="Buscador" focused={focused} />;
+const TabIconJugar = ({ focused }: { focused: boolean }) => <TabIcon routeName="Jugar" focused={focused} />;
 
 /**
  * Accesos principales (§4) como bottom tabs — pensado para una tablet
@@ -81,6 +84,7 @@ export default function MainTabs() {
         options={{ title: 'Colección', tabBarIcon: TabIconColeccion }}
       />
       <Tab.Screen name="Buscador" component={SearchScreen} options={{ tabBarIcon: TabIconBuscador }} />
+      <Tab.Screen name="Jugar" component={GamesScreen} options={{ tabBarIcon: TabIconJugar }} />
     </Tab.Navigator>
   );
 }

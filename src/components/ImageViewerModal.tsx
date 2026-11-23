@@ -137,7 +137,7 @@ function diagonalBand(): LinearGradientValue {
 const SUNPILLARS = ['#FF6B61', '#FFE066', '#A6FF61', '#61FFEC', '#7A9DFF', '#C87AFF'];
 const RAINBOW_DEEP = ['#8C2F2F', '#8C7A2F', '#3F8C2F', '#2F8C86', '#2F5A8C', '#5A2F8C', '#8C2F6E'];
 
-const HOLO_PRESETS: Record<'classic' | 'fullart' | 'reverse' | 'rainbow', HoloPreset> = {
+export const HOLO_PRESETS: Record<'classic' | 'fullart' | 'reverse' | 'rainbow', HoloPreset> = {
   classic: {
     layers: [
       {
@@ -271,7 +271,7 @@ function tierFromRarity(r: string): 'classic' | 'fullart' | 'rainbow' {
  * cartas ya guardadas localmente no los persisten, solo `rarity`) + el texto
  * de rareza → qué preset de brillo usar.
  */
-function getHoloKind(
+export function getHoloKind(
   rarity?: string | null,
   holoVariant?: boolean,
   reverseVariant?: boolean,
@@ -322,7 +322,7 @@ function GradientPanLayer({
 const SPARKLE_COUNT = 18;
 const SPARKLE_MIN_OPACITY = 0.4;
 
-function Sparkle({
+export function Sparkle({
   left,
   top,
   delay,

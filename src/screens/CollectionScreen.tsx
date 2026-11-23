@@ -21,9 +21,14 @@ export default function CollectionScreen() {
     <SafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={[styles.headerRow, { padding: spacing.lg, paddingBottom: spacing.sm }]}>
         <Text style={{ ...type.display, fontFamily: fontFamily.display, color: colors.text }}>Mi colección</Text>
-        <Pressable onPress={() => navigation.navigate('Special')} hitSlop={12}>
-          <AppIcon name="corazon" size={32} />
-        </Pressable>
+        <View style={[styles.headerRow, { gap: spacing.md }]}>
+          <Pressable onPress={() => navigation.navigate('Sets')} hitSlop={12}>
+            <Text style={styles.headerEmoji}>📚</Text>
+          </Pressable>
+          <Pressable onPress={() => navigation.navigate('Special')} hitSlop={12}>
+            <AppIcon name="corazon" size={32} />
+          </Pressable>
+        </View>
       </View>
 
       <QueryState isLoading={cardsQuery.isLoading} error={cardsQuery.error} onRetry={() => cardsQuery.refetch()}>
@@ -54,4 +59,5 @@ export default function CollectionScreen() {
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerEmoji: { fontSize: 28 },
 });

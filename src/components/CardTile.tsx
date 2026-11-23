@@ -3,7 +3,11 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { typeInfo } from '../services/pokemonTypes';
 import { cardArtwork, cardTitle, categoryIcon } from '../services/cardDisplay';
+import { useCardTcg } from '../hooks/queries/useCards';
+import RareShine, { shineKind } from './RareShine';
 import type { Card } from '../api/types';
+
+const GOLD = '#E8B923';
 
 interface Props {
   card: Card;
@@ -21,13 +25,24 @@ export default function CardTile({ card, onPress }: Props) {
     ? typeInfo(card.pokemon.primaryType)
     : { ...typeInfo('desconocido'), icon: categoryIcon(card.category) };
   const isFavorite = card.favoritedBy.length > 0;
+  // Rareza y acabados reales de TCGdex (mismo request cacheado que el precio); si no, la rareza guardada.
+  const tcg = useCardTcg(card).data;
+  const rarity = tcg?.rarity ?? card.rarity;
+  const kind = shineKind(rarity, tcg?.variants?.holo, tcg?.variants?.reverse);
+  const isTopTier = kind === 'rainbow' || kind === 'fullart';
 
   return (
     <Pressable
       onPress={onPress}
       style={[
         styles.tile,
-        { backgroundColor: colors.cardBg, borderRadius: radius.md, borderColor: colors.border, ...elevation.sm },
+        isTopTier ? styles.goldBorder : styles.border,
+        {
+          backgroundColor: colors.cardBg,
+          borderRadius: radius.md,
+          borderColor: isTopTier ? GOLD : colors.border,
+          ...elevation.sm,
+        },
       ]}
     >
       <View style={[styles.artworkWrap, { backgroundColor: info.color + '22' }]}>
@@ -36,6 +51,7 @@ export default function CardTile({ card, onPress }: Props) {
         ) : (
           <Text style={styles.artworkIcon}>{info.icon}</Text>
         )}
+        <RareShine rarity={rarity} holo={tcg?.variants?.holo} reverse={tcg?.variants?.reverse} />
         {isFavorite ? (
           <Text style={[styles.favoriteBadge, { top: spacing.xxs, right: spacing.xxs }]}>❤️</Text>
         ) : null}
@@ -69,7 +85,9 @@ export default function CardTile({ card, onPress }: Props) {
 }
 
 const styles = StyleSheet.create({
-  tile: { flex: 1, overflow: 'hidden', borderWidth: 1 },
+  tile: { flex: 1, overflow: 'hidden' },
+  border: { borderWidth: 1 },
+  goldBorder: { borderWidth: 2 },
   artworkWrap: { aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
   artwork: { width: '80%', height: '80%' },
   artworkIcon: { fontSize: 40 },

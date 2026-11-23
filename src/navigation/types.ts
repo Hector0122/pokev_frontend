@@ -14,6 +14,7 @@ export type MainTabParamList = {
   Inicio: undefined;
   Coleccion: undefined;
   Buscador: undefined;
+  Jugar: undefined;
 };
 
 export type RootStackParamList = {
@@ -38,9 +39,19 @@ export type RootStackParamList = {
         /** "Pokémon" | "Entrenador" | "Energía" — si no es Pokémon se salta elegir especie. */
         prefillCategory?: string;
         prefillTcgdexId?: string;
+        prefillRarity?: string;
       }
     | undefined;
   EditCard: { cardId: string };
+  /** "¡Abrir carta!" tras guardar una — se cierra sola y vuelve a Inicio. */
+  CardReveal: { cardId: string; headline: string };
+  /** Minijuegos (se llega desde la tab Jugar). */
+  GameValue: undefined;
+  GameWho: undefined;
+  GameBattle: undefined;
+  /** Expansiones: todas, y una en detalle con sus cartas. */
+  Sets: undefined;
+  SetDetail: { setId: string; setName: string };
 };
 
 /**

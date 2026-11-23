@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import Button from './Button';
+import { buzz } from '../services/haptics';
 
 interface Props {
   visible: boolean;
@@ -19,6 +20,9 @@ interface Props {
  */
 export default function CelebrationModal({ visible, icon, title, subtitle, onDismiss }: Props) {
   const { colors, spacing, radius, type, fontFamily, elevation } = useTheme();
+  useEffect(() => {
+    if (visible) buzz('win');
+  }, [visible]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
